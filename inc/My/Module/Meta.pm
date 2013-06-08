@@ -14,10 +14,12 @@ our $VERSION = '0.000_01';
 our @EXPORT_OK = qw{
     build_required_module_versions
     required_module_versions
+    required_perl_version
     recommended_module_versions
 };
 
 sub required_module_versions {
+    my @args = @_;
     return (
         'base'                      => 0,
         'strict'                    => 0,
@@ -28,6 +30,7 @@ sub required_module_versions {
         'PPI::Token::Symbol'        => 0,
         'Readonly'                  => 0,
         'Scalar::Util'              => 0,
+        @args,
     );
 }
 
@@ -43,6 +46,10 @@ sub recommended_module_versions {
         'Readonly::XS'  => 0,
         'File::Which'   => 0,
     );
+}
+
+sub required_perl_version {
+    return '5.006001';
 }
 
 
@@ -82,7 +89,11 @@ recommended modules.
 =head2 required_module_versions
 
 This subroutine returns an array of the names and versions of required
-modules.
+modules. Any arguments will be appended to the returned list.
+
+=head2 required_perl_version
+
+This subroutine returns the version of Perl required by the module.
 
 =head1 SUPPORT
 

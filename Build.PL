@@ -1,25 +1,22 @@
-#######################################################################
-#      $URL: http://perlcritic.tigris.org/svn/perlcritic/trunk/distributions/Perl-Critic/Build.PL $
-#     $Date: 2011-03-31 20:00:29 -0400 (Thu, 31 Mar 2011) $
-#   $Author: clonezone $
-# $Revision: 4060 $
-########################################################################
-
-use 5.006001;
-
 use strict;
 use warnings;
 
+use 5.006001;
+
 use lib 'inc';
 
+use Module::Build;
 use My::Module::Build;
 use My::Module::Meta qw{
     build_required_module_versions
     recommended_module_versions
     required_module_versions
+    required_perl_version
 };
 
-my $builder = My::Module::Build->new(
+( my $mbv = Module::Build->VERSION() ) =~ s/_//g;
+
+my %args = (
     module_name         => 'Perl::Critic::Policy::Variables::ProhibitUnusedVarsStricter',
     dist_author         => 'Thomas R. Wyant, III (wyant at cpan dot org)',
     dist_abstract       => 'Critique unused variables in Perl source',
@@ -27,51 +24,53 @@ my $builder = My::Module::Build->new(
     create_packlist     => 1,
     sign                => 0,
 
-    requires            => { required_module_versions() },
+    requires            => { required_module_versions(
+                                perl => required_perl_version(),
+                            ) },
     build_requires      => { build_required_module_versions() },
     recommends          => { recommended_module_versions() },
-
-    # Don't require a developer version of Module::Build, even if the
-    # distribution tarball was created with one.  (Oops.)
-    configure_requires  => {
-        'Module::Build' => '0.34',
-    },
-
-    meta_merge          => {
-        resources   => {
-#           homepage    => 'http://perlcritic.com',
-            license     => 'http://dev.perl.org/licenses/',
-#           repository  => 'http://guest@perlcritic.tigris.org/svn/perlcritic/trunk/distributions/Perl-Critic/',
-#           MailingList => 'http://perlcritic.tigris.org/servlets/SummarizeList?listName=users',
-        },
-        no_index        => {
-            file        => [
-                qw<
-                    TODO.pod
-                >
-            ],
-            directory   => [
-                qw<
-                    doc
-                    examples
-                    inc
-                    tools
-                    xt
-                >
-            ],
-        },
-    },
 
     add_to_cleanup      => [
         qw<
             Debian_CPANTS.txt
         >,
     ],
-    create_makefile_pl  => 'traditional',
+);
+
+$mbv >= 0.28 and $args{meta_merge} = {
+    no_index        => {
+        file        => [
+            qw<
+                TODO.pod
+            >
+        ],
+        directory   => [
+            qw<
+                doc
+                examples
+                inc
+                tools
+                xt
+            >
+        ],
+    },
+    resources   => {
+	bugtracker  => 'https://rt.cpan.org/Public/Dist/Display.html?Name=Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter',
+#       homepage    => 'http://perlcritic.com',
+        license     => 'http://dev.perl.org/licenses/',
+#       repository  => 'http://guest@perlcritic.tigris.org/svn/perlcritic/trunk/distributions/Perl-Critic/',
+#       MailingList => 'http://perlcritic.tigris.org/servlets/SummarizeList?listName=users',
+    },
+};
+
+$mbv >= 0.34
+    and $args{auto_configure_requires} = 0;	# Don't require Module::Build
+
+my $builder = My::Module::Build->new(
+    %args,
 );
 
 $builder->create_build_script();
-
 
 ##############################################################################
 # Local Variables:
