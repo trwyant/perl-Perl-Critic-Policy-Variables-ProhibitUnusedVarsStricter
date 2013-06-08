@@ -1,5 +1,0 @@
-do{ my $x = {
-       'Debian_CPANTS.txt' => 1,
-       'blib' => 1
-     };
-$x; }
