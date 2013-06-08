@@ -1,0 +1,156 @@
+do{ my $x = [
+       {
+         'ARGV' => []
+       },
+       {},
+       {
+         'pureperl_only' => 0,
+         'needs_compiler' => '',
+         'config_dir' => '_build',
+         'get_options' => {},
+         'dist_suffix' => undef,
+         'dist_abstract' => 'Critique unused variables in Perl source',
+         '_added_to_INC' => [
+                              'inc'
+                            ],
+         'build_bat' => 0,
+         'include_dirs' => [],
+         'program_name' => undef,
+         'mymetafile2' => 'MYMETA.json',
+         'original_prefix' => {},
+         'meta_merge' => {
+                           'resources' => {
+                                            'license' => 'http://dev.perl.org/licenses/'
+                                          },
+                           'no_index' => {
+                                           'file' => [
+                                                       'TODO.pod'
+                                                     ],
+                                           'directory' => [
+                                                            'doc',
+                                                            'examples',
+                                                            'inc',
+                                                            'tools',
+                                                            'xt'
+                                                          ]
+                                         }
+                         },
+         'recursive_test_files' => undef,
+         'meta_add' => {},
+         'PL_files' => undef,
+         'metafile' => 'META.yml',
+         'blib' => 'blib',
+         'dynamic_config' => 1,
+         'extra_linker_flags' => [],
+         'sign' => 0,
+         'build_script' => 'Build',
+         'xs_files' => undef,
+         'release_status' => 'testing',
+         'requires' => {
+                         'Perl::Critic::Document' => 0,
+                         'strict' => 0,
+                         'Perl::Critic::Policy' => 0,
+                         'Perl::Critic::Utils' => 0,
+                         'Readonly' => 0,
+                         'base' => 0,
+                         'Scalar::Util' => 0,
+                         'PPI::Token::Symbol' => 0,
+                         'warnings' => 0
+                       },
+         'dist_author' => [
+                            'Thomas R. Wyant, III (wyant at cpan dot org)'
+                          ],
+         'pm_files' => undef,
+         'dist_version_from' => 'lib/Perl/Critic/Policy/Variables/ProhibitUnusedVarsStricter.pm',
+         'mb_version' => '0.4005',
+         'perl' => '/trw/local/perl/5.18.0/bin/perl',
+         'orig_dir' => '/Users/tom/Code/perl/Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter/.',
+         'dist_version' => '0.000_001',
+         'allow_mb_mismatch' => 0,
+         'build_elements' => [
+                               'PL',
+                               'support',
+                               'pm',
+                               'xs',
+                               'share_dir',
+                               'pod',
+                               'script'
+                             ],
+         'configure_requires' => {
+                                   'Module::Build' => '0.34'
+                                 },
+         'create_packlist' => 1,
+         'quiet' => undef,
+         'build_class' => 'My::Module::Build',
+         'c_source' => undef,
+         'allow_pureperl' => 0,
+         'create_license' => undef,
+         'cpan_client' => 'cpan',
+         'bundle_inc' => [],
+         'config' => undef,
+         'install_sets' => {},
+         'extra_compiler_flags' => [],
+         'install_path' => {},
+         'magic_number' => undef,
+         'pollute' => undef,
+         'bundle_inc_preload' => [],
+         'base_dir' => '/Users/tom/Code/perl/Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter/.',
+         'script_files' => undef,
+         'autosplit' => undef,
+         'prefix_relpaths' => {},
+         'install_base_relpaths' => {},
+         'license' => 'perl',
+         'debug' => undef,
+         'install_base' => undef,
+         'prefix' => undef,
+         'scripts' => undef,
+         'pod_files' => undef,
+         'html_css' => '',
+         'use_tap_harness' => 0,
+         'libdoc_dirs' => [
+                            'blib/lib',
+                            'blib/arch'
+                          ],
+         'verbose' => undef,
+         'module_name' => 'Perl::Critic::Policy::Variables::ProhibitUnusedVarsStricter',
+         'destdir' => undef,
+         'conflicts' => {},
+         'recommends' => {
+                           'Readonly::XS' => 0,
+                           'File::Which' => 0
+                         },
+         'dist_name' => 'Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter',
+         'create_makefile_pl' => 'traditional',
+         'metafile2' => 'META.json',
+         'auto_configure_requires' => 1,
+         'create_readme' => undef,
+         'recurse_into' => [],
+         'test_requires' => {},
+         'test_files' => undef,
+         'debugger' => undef,
+         'use_rcfile' => 1,
+         'has_config_data' => undef,
+         'bindoc_dirs' => [
+                            'blib/script'
+                          ],
+         'prereq_action_types' => [
+                                    'requires',
+                                    'build_requires',
+                                    'test_requires',
+                                    'conflicts',
+                                    'recommends'
+                                  ],
+         'build_requires' => {
+                               'Carp' => 0,
+                               'lib' => 0
+                             },
+         'test_file_exts' => [
+                               '.t'
+                             ],
+         'share_dir' => undef,
+         'tap_harness_args' => {},
+         'installdirs' => 'site',
+         'mymetafile' => 'MYMETA.yml'
+       }
+     ];
+$x; }

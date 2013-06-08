@@ -1,0 +1,71 @@
+{
+   "abstract" : "Critique unused variables in Perl source",
+   "author" : [
+      "Thomas R. Wyant, III (wyant at cpan dot org)"
+   ],
+   "dynamic_config" : 1,
+   "generated_by" : "Module::Build version 0.4005, CPAN::Meta::Converter version 2.131490",
+   "license" : [
+      "perl_5"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : "2"
+   },
+   "name" : "Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter",
+   "no_index" : {
+      "directory" : [
+         "doc",
+         "examples",
+         "inc",
+         "tools",
+         "xt"
+      ],
+      "file" : [
+         "TODO.pod"
+      ]
+   },
+   "prereqs" : {
+      "build" : {
+         "requires" : {
+            "Carp" : "0",
+            "lib" : "0"
+         }
+      },
+      "configure" : {
+         "requires" : {
+            "Module::Build" : "0.34"
+         }
+      },
+      "runtime" : {
+         "recommends" : {
+            "File::Which" : "0",
+            "Readonly::XS" : "0"
+         },
+         "requires" : {
+            "PPI::Token::Symbol" : "0",
+            "Perl::Critic::Document" : "0",
+            "Perl::Critic::Policy" : "0",
+            "Perl::Critic::Utils" : "0",
+            "Readonly" : "0",
+            "Scalar::Util" : "0",
+            "base" : "0",
+            "strict" : "0",
+            "warnings" : "0"
+         }
+      }
+   },
+   "provides" : {
+      "Perl::Critic::Policy::Variables::ProhibitUnusedVarsStricter" : {
+         "file" : "lib/Perl/Critic/Policy/Variables/ProhibitUnusedVarsStricter.pm",
+         "version" : "0.000_001"
+      }
+   },
+   "release_status" : "testing",
+   "resources" : {
+      "license" : [
+         "http://dev.perl.org/licenses/"
+      ]
+   },
+   "version" : "0.000_001"
+}
