@@ -9,7 +9,7 @@ use Carp;
 
 use base qw{ Exporter };
 
-our $VERSION = '0.000_001';
+our $VERSION = '0.001';
 
 our @EXPORT_OK = qw{
     build_required_module_versions
