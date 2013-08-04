@@ -14,6 +14,8 @@ our $VERSION = '0.001';
 sub ACTION_authortest {
     my ( $self, @args ) = @_;
 
+    local $ENV{AUTHOR_TESTING} = 1;
+
     $self->depends_on( 'build' );
     $self->test_files( qw{ t xt/author } );
     $self->SUPER::ACTION_test( @args );
