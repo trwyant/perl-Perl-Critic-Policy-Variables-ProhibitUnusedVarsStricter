@@ -445,7 +445,7 @@ sub _record_symbol_use {
         or return;
 
     foreach my $decl_scope ( @{ $declaration } ) {
-        $document->__element_is_in_lexical_scope_after_statement_containing(
+        $document->element_is_in_lexical_scope_after_statement_containing(
             $scope, $decl_scope->{declaration} )
             or next;
         $decl_scope->{used}++;
@@ -627,61 +627,6 @@ sub _get_violations {
         ) } sort { $a->line_number() <=> $b->line_number() ||
             $a->column_number() <=> $b->column_number() }
         @in_violation );
-}
-
-#-----------------------------------------------------------------------------
-
-# TODO get rid of the following monkey patch as soon as the patched
-# version of Perl::Critic::Document is out. Version 1.118 is not
-# sufficient, but presumably 1.119 will be.
-
-sub Perl::Critic::Document::__element_is_in_lexical_scope_after_statement_containing {
-#   my ( $self, $inner_elem, $outer_elem ) = @_;
-    my ( undef, $inner_elem, $outer_elem ) = @_;
-
-    # If the outer element defines a scope, we're true if and only if
-    # the outer element contains the inner element.
-    $outer_elem->scope()
-        and return $inner_elem->descendant_of( $outer_elem );
-
-    # In the more general case:
-
-    # The last element of the statement containing the outer element
-    # must be before the inner element. If not, we know we're false,
-    # without walking the parse tree.
-
-    my $stmt = $outer_elem->statement()
-        or return;
-    my $last_elem = $stmt->last_element()
-        or return;
-
-    my $stmt_loc = $last_elem->location()
-        or return;
-
-    my $inner_loc = $inner_elem->location()
-        or return;
-
-    $stmt_loc->[0] > $inner_loc->[0]
-        and return;
-    $stmt_loc->[0] == $inner_loc->[0]
-        and $stmt_loc->[1] > $inner_loc->[1]
-        and return;
-
-    # Since we know the inner element is after the outer element, find
-    # the element that defines the scope of the statement that contains
-    # the outer element.
-
-    my $parent = $stmt;
-    while ( ! $parent->scope() ) {
-        $parent = $parent->parent()
-            or return;
-    }
-
-    # We're true if and only if the scope of the outer element contains
-    # the inner element.
-
-    return $inner_elem->descendant_of( $parent );
-
 }
 
 #-----------------------------------------------------------------------------

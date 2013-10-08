@@ -24,7 +24,6 @@ xt/author/42_criticize-tests.t
 xt/author/42_perlcriticrc-tests
 xt/author/43_criticize-run-files.t
 xt/author/43_perlcriticrc-run-files
-xt/author/77_need_monkey_patch.t
 xt/author/82_optional_modules.t
 xt/author/93_version.t
 xt/author/94_includes.t
