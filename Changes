@@ -1,3 +1,8 @@
+0.002		2013-10-08	T. R. Wyant
+  Required Perl::Critic version 1.119, since its scope computation is
+    adequate for our needs. Got rid of our own scope computation code.
+  Converted Changes file to CPAN::Changes::Spec format.
+
 0.001		2013-06-23	T. R. Wyant
   Initial production release. No change from 0.000_001.
 
