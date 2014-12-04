@@ -11,7 +11,8 @@ use 5.006001;
 use strict;
 use warnings;
 
-use Readonly; # So we don't barf when we hit Readonly::XS below.
+use ExtUtils::MakeMaker;
+use File::Spec;
 
 use lib 'inc';
 
@@ -38,7 +39,38 @@ my %module_versions = (
 plan tests => scalar keys %module_versions;
 
 foreach my $module (sort keys %module_versions) {
-    use_ok( $module, $module_versions{$module} );
+    check_version( $module, $module_versions{$module} );
+}
+
+# Check if the given module (and version) is installed.
+#
+# We used to just use 'use_ok()', but Readonly::XS now complains if anyone but
+# Readonly loads it, and there seems to be no supportable way to defeat the
+# complaint. So we hand-scan @INC, and use ExtUtils::MakeMaker to retrieve the
+# version without actually loading the module.
+
+sub check_version {
+    my ( $module, $version ) = @_;
+    my $want_v = $version;
+    defined $want_v
+        and $want_v =~ s/ _ //smxg;
+    ( my $fn = $module ) =~ s{ :: }{/}smxg;
+    $fn .= '.pm';
+    foreach my $dir ( @INC ) {
+        my $path = File::Spec->catfile( $dir, $fn );
+        -f $path
+            or next;
+        if ( $want_v ) {
+            ( my $file_v = MM->parse_version( $path ) ) =~ s/ _ //smxg;
+            @_ = ( $file_v, '>=', $want_v, "$module version $version (at least) is installed" );
+            goto &cmp_ok;
+        } else {
+            @_ = ( "$module is installed" );
+            goto &pass;
+        }
+    }
+    @_ = ( "$module is not installed" );
+    goto &fail;
 }
 
 # Local Variables:
