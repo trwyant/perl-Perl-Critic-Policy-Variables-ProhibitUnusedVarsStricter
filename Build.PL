@@ -9,6 +9,7 @@ use Module::Build;
 use My::Module::Build;
 use My::Module::Meta qw{
     build_required_module_versions
+    meta_merge
     recommended_module_versions
     required_module_versions
     required_perl_version
@@ -37,31 +38,8 @@ my %args = (
     ],
 );
 
-$mbv >= 0.28 and $args{meta_merge} = {
-    no_index        => {
-        file        => [
-            qw<
-                TODO.pod
-            >
-        ],
-        directory   => [
-            qw<
-                doc
-                examples
-                inc
-                tools
-                xt
-            >
-        ],
-    },
-    resources   => {
-	bugtracker  => 'https://rt.cpan.org/Public/Dist/Display.html?Name=Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter',
-#       homepage    => 'http://perlcritic.com',
-        license     => 'http://dev.perl.org/licenses/',
-#       repository  => 'http://guest@perlcritic.tigris.org/svn/perlcritic/trunk/distributions/Perl-Critic/',
-#       MailingList => 'http://perlcritic.tigris.org/servlets/SummarizeList?listName=users',
-    },
-};
+$mbv >= 0.28
+    and $args{meta_merge} = meta_merge();
 
 $mbv >= 0.34
     and $args{auto_configure_requires} = 0;	# Don't require Module::Build

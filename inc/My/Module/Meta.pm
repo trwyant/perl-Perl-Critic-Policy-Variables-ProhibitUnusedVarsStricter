@@ -12,11 +12,50 @@ use base qw{ Exporter };
 our $VERSION = '0.003';
 
 our @EXPORT_OK = qw{
+    meta_merge
     build_required_module_versions
     required_module_versions
     required_perl_version
     recommended_module_versions
 };
+
+sub meta_merge {
+    return {
+	'meta-spec'	=> {
+	    version	=> 2,
+	},
+#       homepage    => 'http://perlcritic.com',
+	no_index	=> {
+            file        => [
+                qw<
+                    TODO.pod
+                >
+            ],
+            directory   => [
+                qw<
+                    doc
+                    examples
+                    inc
+                    tools
+                    xt
+                >
+            ],
+	},
+	resources	=> {
+	    bugtracker	=> {
+                web => 'https://rt.cpan.org/Public/Dist/Display.html?Name=Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter',
+                mailto  => 'wyant@cpan.org',
+            },
+	    license	=> 'http://dev.perl.org/licenses/',
+	    repository	=> {
+		type	=> 'git',
+		url	=> 'git://github.com/trwyant/perl-Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter.git',
+		web	=> 'https://github.com/trwyant/perl-Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter',
+	    },
+#            MailingList => 'http://perlcritic.tigris.org/servlets/SummarizeList?listName=users',
+	}
+    };
+}
 
 sub required_module_versions {
     my @args = @_;
@@ -80,6 +119,16 @@ are exportable:
 
 This subroutine returns an array of the names and versions of modules
 required for the build.
+
+=head2 meta_merge
+
+ use YAML;
+ print Dump( $meta->meta_merge() );
+
+This method returns a reference to a hash describing the meta-data which
+has to be provided by making use of the builder's C<meta_merge>
+functionality. This includes the C<dynamic_config>, C<no_index> and
+C<resources> data.
 
 =head2 recommended_module_versions
 
