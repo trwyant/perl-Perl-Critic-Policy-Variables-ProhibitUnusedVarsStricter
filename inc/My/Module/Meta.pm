@@ -9,7 +9,7 @@ use Carp;
 
 use base qw{ Exporter };
 
-our $VERSION = '0.003';
+our $VERSION = '0.004';
 
 our @EXPORT_OK = qw{
     meta_merge
