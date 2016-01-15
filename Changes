@@ -1,3 +1,8 @@
+0.004_01	2016-01-15	T. R. Wyant
+  Improve performance on really, really long strings This was done by
+    rewriting the regular expression that finds interpolations to
+    minimize backtracking.
+
 0.004		2016-01-08	T. R. Wyant
   Add GitHub repository to module metadata.
 

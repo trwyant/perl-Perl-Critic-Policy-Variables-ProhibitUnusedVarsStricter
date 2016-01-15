@@ -10,7 +10,7 @@ use Getopt::Long 2.33;
 use Perl::Critic::Command;
 use Pod::Usage;
 
-our $VERSION = '0.004';
+our $VERSION = '0.004_01';
 
 my %opt;
 
