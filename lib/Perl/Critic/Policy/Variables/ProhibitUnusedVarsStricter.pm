@@ -1,10 +1,3 @@
-##############################################################################
-#      $URL: http://perlcritic.tigris.org/svn/perlcritic/branches/rt64929/lib/Perl/Critic/Policy/Variables/ProhibitUnusedVarsStricter.pm $
-#     $Date: 2011-02-08 21:04:32 -0500 (Tue, 08 Feb 2011) $
-#   $Author: wyant $
-# $Revision: 4036 $
-##############################################################################
-
 package Perl::Critic::Policy::Variables::ProhibitUnusedVarsStricter;
 
 use 5.006001;
@@ -53,10 +46,26 @@ Readonly::Hash my %GLOBAL_DECLARATION => (
 # $2 = the variable (\w+, since we are not worried about built-ins, but
 #      possibly with enclosing {})
 # $3 = the first character of the subscript ( '[' or '{' ), if any
-Readonly::Scalar my $FIND_INTERPOLATION => <<'EOD';
-    (?: \A | .*? (?<! [\\] ) ) (?: \\\\ )*
-    ( [\$\@]{1,2} ) ( \w+ | [{] \w+ [}] ) ( [[{]? )
-EOD
+# The (*SKIP) prevents backtracking past that point, which causes the
+# expression to be really, really slow on very long strings such as the
+# 447776-character one in CPAN module Bhagavatgita.
+#Readonly::Scalar my $FIND_INTERPOLATION => qr/
+#    (?: \A | (?<! [\\] ) ) (?: \\\\ )* (*SKIP)
+#    ( [\$\@]{1,2} ) ( \w+ | [{] \w+ [}] ) ( [[{]? )
+#/smx;
+#
+# But it turned out to be slightly faster (0.8 seconds versus 1 second
+# to analyze module Bhagavatgita) to capture the back slashes (if any)
+# in front of a potential interpolation, and then weed out the ones that
+# turn out to be escaped. The following captures:
+# $1 = any leading back slashes
+# $2 = the sigil ( '$' or '@' ), with leading cast if any
+# $3 = the variable (\w+, since we are not worried about built-ins, but
+#      possibly with enclosing {})
+# $4 = the first character of the subscript ( '[' or '{' ), if any
+Readonly::Scalar my $FIND_INTERPOLATION => qr/
+    ( \\* ) ( [\$\@]{1,2} ) ( \w+ | [{] \w+ [}] ) ( [[{]? )
+/smx;
 
 Readonly::Scalar my $LAST_CHARACTER => -1;
 
@@ -491,7 +500,9 @@ sub _get_double_quotish_string_uses {
 sub _extract_interpolations {
     my ( $document, $string, $scope, $declared ) = @_;
     while ( $string =~ m/ $FIND_INTERPOLATION /smxgo ) {
-        my ( $sigil, $name, $brace ) = ( $1, $2, $3 );
+        my ( $escape, $sigil, $name, $brace ) = ( $1, $2, $3, $4 );
+        length( $escape ) % 2
+            and next;
         my $symbol =
             _compute_symbol_from_interpolation_pieces_parts(
             $sigil, $name, $brace );
