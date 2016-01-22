@@ -1,3 +1,6 @@
+0.005		2016-01-22	T. R. Wyant
+  No changes since 0.004_01.
+
 0.004_01	2016-01-15	T. R. Wyant
   Improve performance on really, really long strings This was done by
     rewriting the regular expression that finds interpolations to
