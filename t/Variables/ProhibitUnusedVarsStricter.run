@@ -478,12 +478,22 @@ foreach my $foo ( qw{ bar baz } ) {
 
 #-----------------------------------------------------------------------------
 
-##############################################################################
-#      $URL: http://perlcritic.tigris.org/svn/perlcritic/branches/rt64929/t/Variables/ProhibitUnusedVariables.run $
-#     $Date: 2011-02-08 21:04:32 -0500 (Tue, 08 Feb 2011) $
-#   $Author: wyant $
-# $Revision: 4036 $
-##############################################################################
+## name unused state variables
+## failures 1
+## cut
+
+state $foo = 'bar';
+
+#-----------------------------------------------------------------------------
+
+## name used state variables
+## failures 0
+## cut
+
+state $bar = 'baz';
+say $bar;
+
+#-----------------------------------------------------------------------------
 
 # Local Variables:
 #   mode: cperl
