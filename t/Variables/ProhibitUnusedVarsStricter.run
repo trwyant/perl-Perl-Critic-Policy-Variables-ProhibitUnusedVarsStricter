@@ -495,6 +495,27 @@ say $bar;
 
 #-----------------------------------------------------------------------------
 
+## name temporary lvalue
+## failures 0
+## cut
+
+return my $x = 'foo';
+
+return ( my $y = 42 );
+
+#-----------------------------------------------------------------------------
+
+## name prohibit temporary lvalue
+## parms { prohibit_returned_lexicals => '1' }
+## failures 2
+## cut
+
+return my $x = 'foo';
+
+return ( my $y = 42 );
+
+#-----------------------------------------------------------------------------
+
 # Local Variables:
 #   mode: cperl
 #   cperl-indent-level: 4

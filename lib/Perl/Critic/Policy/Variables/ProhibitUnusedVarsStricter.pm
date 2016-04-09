@@ -82,6 +82,11 @@ sub supported_parameters { return (
             behavior    => 'boolean',
             default_string  => '0',
         },
+        {   name        => 'prohibit_returned_lexicals',
+            description => 'Prohibit returned lexicals',
+            behavior    => 'boolean',
+            default_string  => '0',
+        },
         {   name        => 'allow_unused_subroutine_arguments',
             description => 'Allow unused subroutine arguments',
             behavior    => 'boolean',
@@ -145,7 +150,7 @@ sub _get_symbol_declarations {
     $self->_get_variable_declarations( $document, $declared,
         $is_declaration );
 
-    _get_compound_statement_declarations( $document, $declared,
+    _get_stray_variable_declarations( $document, $declared,
         $is_declaration );
 
     # Because we need multiple passes to find all the declarations, we
@@ -229,6 +234,8 @@ sub _get_variable_declarations {
                 is_unpacking => $is_unpacking,
                 taking_reference => scalar _taking_reference_of_variable(
                     $declaration ),
+                returned_lexical => scalar _returned_lexical(
+                    $declaration ),
                 used        => 0,
             };
 
@@ -244,55 +251,73 @@ sub _get_variable_declarations {
 {
 
     Readonly::Hash my %IS_FOR => hashify( qw{ for foreach } );
+    Readonly::Hash my %IS_RETURN => hashify( qw{ return } );
 
-    # Get declarations in compound statements. We only need process
-    # 'for' and 'foreach', because the condition of a 'while' parses as
-    # a PPI::Statement::Variable when we need it to.
+    # Get stray declarations that do not show up in
+    # PPI::Statement::Variable statements. These show up in
+    # PPI::Statement::Compound (specifically 'for' and 'foreach'), and
+    # in PPI::Statement::Break (specifically 'return'). In the case of
+    # 'return', we do not need to descend into paren, because if there
+    # are parens, PPI produces a PPI::Statement::Variable.
 
-    sub _get_compound_statement_declarations {
+    sub _get_stray_variable_declarations {
         my ( $document, $declared, $is_declaration ) = @_;
 
-        foreach my $declaration (
-            @{ $document->find( 'PPI::Statement::Compound' ) || [] }
+        foreach (
+            [ 'PPI::Statement::Compound' => {
+                    want                => \%IS_FOR,
+                    returned_lexical    => $FALSE,
+                } ],
+            [ 'PPI::Statement::Break'   => {
+                    want                => \%IS_RETURN,
+                    returned_lexical    => $TRUE,
+                } ],
         ) {
+            my ( $class, $info ) = @{ $_ };
+            foreach my $declaration (
+                @{ $document->find( $class ) || [] }
+            ) {
 
-            my $type = $declaration->schild( 0 )
-                or next;
-
-            my $type_str = $type->content();
-
-            if ( $IS_FOR{$type_str} ) {
-
-                my $sib = $type->snext_sibling()
+                my $type = $declaration->schild( 0 )
                     or next;
 
-                # We're looking for 'my', 'state', or 'our'.
-                $sib->isa( 'PPI::Token::Word' )
-                    or next;
-                my $sib_content = $sib->content();
-                defined( my $is_global = $GLOBAL_DECLARATION{$sib_content} )
-                    or next;
+                my $type_str = $type->content();
 
-                my $symbol = $sib->snext_sibling()
-                    or next;
-                $symbol->isa( 'PPI::Token::Symbol' )
-                    or next;
+                if ( $info->{want}{$type_str} ) {
 
-                $is_declaration->{ refaddr( $symbol ) } = 1;
+                    my $sib = $type->snext_sibling()
+                        or next;
 
-                # Yes, the hash values are supposed to be in reverse
-                # order.  But since we have to make multiple passes to
-                # find all the declarations, we put them in the correct
-                # order later.
-                push @{ $declared->{ $symbol->symbol() } ||= [] }, {
-                    declaration => $declaration,
-                    element     => $symbol,
-                    is_allowed_computation => $FALSE,
-                    is_global   => $is_global,
-                    is_unpacking => $FALSE,
-                    taking_reference => $FALSE,
-                    used        => 0,
-                };
+                    # We're looking for 'my', 'state', or 'our'.
+                    $sib->isa( 'PPI::Token::Word' )
+                        or next;
+                    my $sib_content = $sib->content();
+                    defined( my $is_global = $GLOBAL_DECLARATION{$sib_content} )
+                        or next;
+
+                    my $symbol = $sib->snext_sibling()
+                        or next;
+                    $symbol->isa( 'PPI::Token::Symbol' )
+                        or next;
+
+                    $is_declaration->{ refaddr( $symbol ) } = 1;
+
+                    # Yes, the hash values are supposed to be in reverse
+                    # order. But since we have to make multiple passes
+                    # to find all the declarations, we put them in the
+                    # correct order later.
+                    push @{ $declared->{ $symbol->symbol() } ||= [] }, {
+                        declaration         => $declaration,
+                        element             => $symbol,
+                        is_allowed_computation => $FALSE,
+                        is_global           => $is_global,
+                        is_unpacking        => $FALSE,
+                        taking_reference    => $FALSE,
+                        returned_lexical    => $info->{returned_lexical},
+                        used                => 0,
+                    };
+
+                }
 
             }
 
@@ -367,6 +392,21 @@ sub _taking_reference_of_variable {
     $cast->isa( 'PPI::Token::Cast' )
         or return;
     return q<\\> eq $cast->content()
+}
+
+#-----------------------------------------------------------------------------
+
+sub _returned_lexical {
+    my ( $elem ) = @_;  # Expect a PPI::Statement::Variable
+    my $parent = $elem->parent()
+        or return;
+    my $stmt = $parent->statement()
+        or return;
+    $stmt->isa( 'PPI::Statement::Break' )
+        or return;
+    my $kind = $stmt->schild( 0 )
+        or return;  # Should never happen.
+    return 'return' eq $kind->content();
 }
 
 #-----------------------------------------------------------------------------
@@ -624,6 +664,9 @@ sub _get_violations {
             $declaration->{taking_reference}
                 and not $self->{_prohibit_reference_only_variables}
                 and next;
+            $declaration->{returned_lexical}
+                and not $self->{_prohibit_returned_lexicals}
+                and next;
             $declaration->{is_unpacking}
                 and $self->{_allow_unused_subroutine_arguments}
                 and next;
@@ -746,6 +789,16 @@ F<.perlcriticrc> file:
 
     [Variables::ProhibitUnusedVarsStricter]
     prohibit_reference_only_variables = 1
+
+=head2 prohibit_returned_lexicals
+
+By default, this policy allows otherwise-unused variables if they are
+being returned from a subroutine, under the presumption that they are
+going to be used as lvalues. If you wish to declare a violation in this
+case, you can add a block like this to your F<.perlcriticrc> file:
+
+    [Variables::ProhibitUnusedVarsStricter]
+    prohibit_returned_lexicals = 1
 
 =head2 allow_if_computed_by
 
