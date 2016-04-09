@@ -1,7 +1,15 @@
-0.005		2016-01-22	T. R. Wyant
-  No changes since 0.004_01.
+0.005_01	2016-04-08	T. R. Wyant
+  Allow 'return ( my $x = 0 )'
 
-0.004_01	2016-01-15	T. R. Wyant
+    This construction can be used to return a temporary value from an lvalue
+    subroutine. The case 'return my $x = 0' is equivalent, but was not
+    recognized as defining a variable. Now both are recognized and accepted
+    by default.
+
+    If you want to reject these, there is a new Boolean configuration item,
+    prohibit_returned_lexicals.
+
+0.005		2016-01-22	T. R. Wyant
   Improve performance on really, really long strings This was done by
     rewriting the regular expression that finds interpolations to
     minimize backtracking.
@@ -10,18 +18,13 @@
   Add GitHub repository to module metadata.
 
 0.003		2014-12-12	T. R. Wyant
-  No changes since 0.002_01.
-
-0.002_01	2014-12-03	T. R. Wyant
   Fix author test for the presence of recommended modules.
 
 0.002		2013-10-08	T. R. Wyant
   Required Perl::Critic version 1.119, since its scope computation is
     adequate for our needs. Got rid of our own scope computation code.
+
   Converted Changes file to CPAN::Changes::Spec format.
 
 0.001		2013-06-23	T. R. Wyant
-  Initial production release. No change from 0.000_001.
-
-0.000_001	2013-06-09	T. R. Wyant
-  Initial release
+  Initial production release.
