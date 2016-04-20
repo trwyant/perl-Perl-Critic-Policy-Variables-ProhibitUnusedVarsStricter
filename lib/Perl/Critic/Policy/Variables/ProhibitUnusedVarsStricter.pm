@@ -14,7 +14,7 @@ use Perl::Critic::Utils qw< :booleans :characters hashify :severities >;
 
 use base 'Perl::Critic::Policy';
 
-our $VERSION = '0.005_01';
+our $VERSION = '0.006';
 
 #-----------------------------------------------------------------------------
 
