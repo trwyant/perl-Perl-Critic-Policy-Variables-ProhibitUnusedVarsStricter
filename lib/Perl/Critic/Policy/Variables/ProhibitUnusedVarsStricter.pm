@@ -196,7 +196,18 @@ sub _get_variable_declarations {
             last;
         }
 
-        my $first_operand = $declaration->schild( 1 );
+        # We _should_ always get a $first_operand. However, given
+        #   use Object::InsideOut;
+        #       .
+        #       .
+        #       ,
+        #   my @state : Field : Arg(state) : Get(state);
+        # (which appears in MetasploitExpress::Parser::Host), PPI parses
+        # the second and third occurrences of the string 'state' as a
+        # PPI::Statement::Variable, when it probably ought to be a
+        # PPI::Token::Word. We need to protect ourselves, so ...
+        my $first_operand = $declaration->schild( 1 )
+            or next;
 
         # We can't just look for symbols, since PPI parses the parens in
         # open( my $fh, '>&', \*STDOUT )

@@ -516,6 +516,20 @@ return ( my $y = 42 );
 
 #-----------------------------------------------------------------------------
 
+## name survive use of Object::InsideOut and odd PPI behavior
+## failures 1
+## cut
+
+# Code is from JABRA/MetasploitExpress-Parser-0.02.tar.gz
+# file lib/MetasploitExpress/Parser/Host.pm
+
+use Object::InsideOut;
+
+my @state : Field : Arg(state) : Get(state);
+
+
+#-----------------------------------------------------------------------------
+
 # Local Variables:
 #   mode: cperl
 #   cperl-indent-level: 4
