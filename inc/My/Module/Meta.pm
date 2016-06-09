@@ -67,6 +67,7 @@ sub required_module_versions {
         'Perl::Critic::Policy'      => 1.119,
         'Perl::Critic::Utils'       => 1.119,
         'PPI::Token::Symbol'        => 0,
+        'PPIx::QuoteLike'           => 0,
         'Readonly'                  => 0,
         'Scalar::Util'              => 0,
         @args,

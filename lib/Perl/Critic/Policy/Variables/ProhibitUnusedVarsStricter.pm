@@ -5,6 +5,7 @@ use strict;
 use warnings;
 
 use Perl::Critic::Document;
+use PPIx::QuoteLike;
 use Readonly;
 use Scalar::Util qw{ refaddr };
 
@@ -135,8 +136,6 @@ sub violates {
     _get_regexp_symbol_uses( $document, \%declared, \%is_declaration );
 
     _get_double_quotish_string_uses( $document, undef, \%declared );
-
-    _get_here_document_uses( $document, \%declared );
 
     return $self->_get_violations( \%declared );
 
@@ -527,94 +526,22 @@ sub _get_double_quotish_string_uses {
         PPI::Token::QuoteLike::Backtick
         PPI::Token::QuoteLike::Command
         PPI::Token::QuoteLike::Readline
+        PPI::Token::HereDoc
         } ) {
         foreach my $double_quotish (
             @{ $document->find( $class ) || [] }
         ) {
-            my $string = $double_quotish->content();
+            my $str = PPIx::QuoteLike->new( $double_quotish )
+                or next;
 
-            # qx'...' does not interpolate
-            $double_quotish->isa( 'PPI::Token::QuoteLike::Command' )
-                and $string =~ m/ \A qx \s* ' /smx
-                and next;
-
-            _extract_interpolations( $document, $string,
-                $scope_of_record || $double_quotish, $declared );
+            foreach my $var ( $str->variables() ) {
+                _record_symbol_use( $document, $var,
+                    $scope_of_record || $double_quotish, $declared );
+            }
         }
     }
 
     return;
-}
-
-#-----------------------------------------------------------------------------
-
-sub _extract_interpolations {
-    my ( $document, $string, $scope, $declared ) = @_;
-    while ( $string =~ m/ $FIND_INTERPOLATION /smxgo ) {
-        my ( $escape, $sigil, $name, $brace ) = ( $1, $2, $3, $4 );
-        length( $escape ) % 2
-            and next;
-        my $symbol =
-            _compute_symbol_from_interpolation_pieces_parts(
-            $sigil, $name, $brace );
-        _record_symbol_use( $document, $symbol, $scope, $declared );
-    }
-    return;
-}
-
-#-----------------------------------------------------------------------------
-
-sub _get_here_document_uses {
-    my ( $document, $declared ) = @_;
-
-    foreach my $here_document ( @{ $document->find(
-        'PPI::Token::HereDoc' ) || []
-        } ) {
-
-        $here_document->content() =~ m/ \A << \s* ' /smx
-            and next;
-
-        foreach my $string ( $here_document->heredoc() ) {
-
-            _extract_interpolations( $document, $string, $here_document,
-                $declared );
-
-        }
-    }
-
-    return;
-}
-
-#-----------------------------------------------------------------------------
-
-{
-
-    Readonly::Hash my %SIGIL_TO_BE_TAKEN_AS_IS => hashify( qw{ @$ $$ @ } );
-    Readonly::Hash my %SIGIL_COMPUTED_FROM_BRACE => (
-        q<{>    => q<%>,
-        q<[>    => q<@>,
-    );
-
-    sub _compute_symbol_from_interpolation_pieces_parts {
-        my ( $cast_and_sigil, $name, $brace ) = @_;
-
-        $name =~ s/ \A [{] //smx;
-        $name =~ s/ [}] \z //smx;
-
-        my $sigil = substr $cast_and_sigil, $LAST_CHARACTER;
-
-        $SIGIL_TO_BE_TAKEN_AS_IS{$cast_and_sigil}
-            and return "$sigil$name";
-
-        defined(
-            my $computed_sigil =
-                $SIGIL_COMPUTED_FROM_BRACE{ $brace || $EMPTY }
-        ) or return "$sigil$name";
-
-        return "$computed_sigil$name";
-
-    }
-
 }
 
 #-----------------------------------------------------------------------------
@@ -714,6 +641,12 @@ Perl::Critic::Policy::Variables::ProhibitUnusedVarsStricter - Don't ask for stor
 This Policy is stand-alone, and is not part of the core
 L<Perl::Critic|Perl::Critic>.
 
+
+=head1 NOTE
+
+As of version [%% next_version %%], the logic that recognizes variables
+interpolated into double-quotish strings has been refactored into module
+L<PPIx::QuoteLike|PPIx::QuoteLike>.
 
 =head1 DESCRIPTION
 
