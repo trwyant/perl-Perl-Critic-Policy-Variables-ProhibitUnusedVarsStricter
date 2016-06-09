@@ -1,3 +1,13 @@
+0.099_001	2016-06-09	T. R. Wyant
+  Refactor the logic that discovers which variables are interpolated
+    into double-quotish strings into PPIx::QuoteLike. This does not
+    include regular expressions, which are already handled by
+    PPIx::Regexp.
+
+  Survive variable declarations that declare nothing. These can appear
+    if (e.g.) PPI mis-parses an attribute list, and that attribute list
+    contains something like 'Arg(state)'.
+
 0.006		2016-04-20	T. R. Wyant
   Allow 'return ( my $x = 0 )'
 

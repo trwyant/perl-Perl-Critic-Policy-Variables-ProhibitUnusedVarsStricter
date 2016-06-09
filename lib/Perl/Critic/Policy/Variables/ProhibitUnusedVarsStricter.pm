@@ -15,7 +15,7 @@ use Perl::Critic::Utils qw< :booleans :characters hashify :severities >;
 
 use base 'Perl::Critic::Policy';
 
-our $VERSION = '0.006';
+our $VERSION = '0.099_001';
 
 #-----------------------------------------------------------------------------
 
@@ -644,7 +644,7 @@ L<Perl::Critic|Perl::Critic>.
 
 =head1 NOTE
 
-As of version [%% next_version %%], the logic that recognizes variables
+As of version 0.099_001, the logic that recognizes variables
 interpolated into double-quotish strings has been refactored into module
 L<PPIx::QuoteLike|PPIx::QuoteLike>.
 
