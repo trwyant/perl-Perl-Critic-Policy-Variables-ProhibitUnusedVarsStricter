@@ -10,7 +10,7 @@ use My::Module::Meta qw{
     build_required_module_versions
     meta_merge
     required_module_versions
-    required_perl_version
+    requires_perl
     recommended_module_versions
 };
 
@@ -32,7 +32,7 @@ $mmv >= 6.4501
     and $args{META_MERGE} = meta_merge();
 
 $mmv >= 6.4701
-    and $args{MIN_PERL_VERSION} = required_perl_version();
+    and $args{MIN_PERL_VERSION} = requires_perl();
 
 $mmv >= 6.5501
     and $args{BUILD_REQUIRES} = { build_required_module_versions() }

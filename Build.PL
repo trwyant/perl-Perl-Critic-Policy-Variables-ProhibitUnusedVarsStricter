@@ -12,7 +12,7 @@ use My::Module::Meta qw{
     meta_merge
     recommended_module_versions
     required_module_versions
-    required_perl_version
+    requires_perl
 };
 
 ( my $mbv = Module::Build->VERSION() ) =~ s/_//g;
@@ -26,7 +26,7 @@ my %args = (
     sign                => 0,
 
     requires            => { required_module_versions(
-                                perl => required_perl_version(),
+                                perl => requires_perl(),
                             ) },
     build_requires      => { build_required_module_versions() },
     recommends          => { recommended_module_versions() },

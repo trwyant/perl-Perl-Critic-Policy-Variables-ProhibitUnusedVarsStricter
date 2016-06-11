@@ -15,7 +15,7 @@ our @EXPORT_OK = qw{
     meta_merge
     build_required_module_versions
     required_module_versions
-    required_perl_version
+    requires_perl
     recommended_module_versions
 };
 
@@ -88,7 +88,7 @@ sub recommended_module_versions {
     );
 }
 
-sub required_perl_version {
+sub requires_perl {
     return '5.006001';
 }
 
@@ -141,7 +141,7 @@ recommended modules.
 This subroutine returns an array of the names and versions of required
 modules. Any arguments will be appended to the returned list.
 
-=head2 required_perl_version
+=head2 requires_perl
 
 This subroutine returns the version of Perl required by the module.
 
