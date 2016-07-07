@@ -9,7 +9,7 @@ use Carp;
 
 use base qw{ Module::Build };
 
-our $VERSION = '0.099_002';
+our $VERSION = '0.100';
 
 sub ACTION_authortest {
     my ( $self, @args ) = @_;
