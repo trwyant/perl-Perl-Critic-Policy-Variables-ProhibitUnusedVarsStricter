@@ -17,12 +17,12 @@ use English qw( -no_match_vars );
 use File::Spec qw();
 
 use Perl::Critic::Utils qw{ :characters };
-use Perl::Critic::TestUtils qw{ starting_points_including_examples };
+# use Perl::Critic::TestUtils qw{ starting_points_including_examples };
 
 # Note: "use PolicyFactory" *must* appear after "use TestUtils" for the
 # -extra-test-policies option to work.
 use Perl::Critic::PolicyFactory (
-    '-test' => 1,
+#   '-test' => 1,
     '-extra-test-policies' => [ qw{ ErrorHandling::RequireUseOfExceptions } ],
 );
 
@@ -71,7 +71,8 @@ foreach my $pkg ( $EMPTY, qw< ::Config ::Policy ::Violation> ) {
 my $rcfile = File::Spec->catfile( 'xt', 'author', '40_perlcriticrc-code' );
 Test::Perl::Critic->import( -profile => $rcfile );
 
-all_critic_ok( starting_points_including_examples() );
+# all_critic_ok( starting_points_including_examples() );
+all_critic_ok( qw{ blib examples } );
 
 #-----------------------------------------------------------------------------
 
