@@ -7,7 +7,8 @@ use warnings;
 
 use Carp;
 
-use base qw{ Module::Build };
+use Module::Build;
+our @ISA = qw{ Module::Build };
 
 our $VERSION = '0.100';
 
