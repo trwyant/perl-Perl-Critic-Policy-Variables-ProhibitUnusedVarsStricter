@@ -1,11 +1,3 @@
-#!perl -w
-
-##############################################################################
-#      $URL: http://perlcritic.tigris.org/svn/perlcritic/trunk/distributions/Perl-Critic/xt/author/93_version.t $
-#     $Date: 2011-05-15 17:34:46 -0400 (Sun, 15 May 2011) $
-#   $Author: clonezone $
-# $Revision: 4078 $
-##############################################################################
 
 use strict;
 use warnings;
