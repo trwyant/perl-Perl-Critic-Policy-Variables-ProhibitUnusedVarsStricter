@@ -1,4 +1,4 @@
-0.100_01	2017-11-13	T. R. Wyant
+0.101		2017-11-20	T. R. Wyant
     Remove 'mailto' bugtracker metadata Its presence appears to tell RT
     not to allow filings.
 
