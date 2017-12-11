@@ -55,7 +55,7 @@ Test::Perl::Critic->import( -profile => $rcfile );
 all_critic_ok(
     glob ('t/*.t'),
     glob ('xt/author/*.t'),
-    'generate_without_optional_dependencies_wrappers.PL',
+#   'generate_without_optional_dependencies_wrappers.PL',
 );
 
 #-----------------------------------------------------------------------------
