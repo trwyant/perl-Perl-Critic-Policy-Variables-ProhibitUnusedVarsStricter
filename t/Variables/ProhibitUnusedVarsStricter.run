@@ -551,7 +551,7 @@ say "\@$x";
 
 ## name for() arguments (Knutzen)
 ## failures 0
-## TODO Correct scope code, which is currently in Perl::Critic
+# ## TODO Correct scope code, which is currently in Perl::Critic
 ## cut
 
 my $x = [ qw{ Larry Moe Shemp } ];
@@ -568,7 +568,7 @@ foreach my $y ( @{ $y } ) {
 
 ## name if() conditions (Knutzen)
 ## failures 0
-## TODO Correct scope code, which is currently in Perl::Critic
+# ## TODO Correct scope code, which is currently in Perl::Critic
 ## cut
 
 my $x = [ qw{ Conan Solomon Bran Kull } ];
