@@ -924,7 +924,7 @@ Thomas R. Wyant, III F<wyant at cpan dot org>
 
 =head1 COPYRIGHT
 
-Copyright (C) 2012-2017 Thomas R. Wyant, III
+Copyright (C) 2012-2018 Thomas R. Wyant, III
 
 =head1 LICENSE
 
