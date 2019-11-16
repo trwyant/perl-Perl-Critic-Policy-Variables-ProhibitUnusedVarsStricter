@@ -70,6 +70,8 @@ Readonly::Scalar my $FIND_INTERPOLATION => qr<
 
 Readonly::Scalar my $LAST_CHARACTER => -1;
 
+Readonly::Hash my %LOW_PRECEDENCE_BOOLEAN => hashify( qw{ and or xor } );
+
 #-----------------------------------------------------------------------------
 
 sub supported_parameters { return (
@@ -90,6 +92,12 @@ sub supported_parameters { return (
         },
         {   name        => 'allow_unused_subroutine_arguments',
             description => 'Allow unused subroutine arguments',
+            behavior    => 'boolean',
+            default_string  => '0',
+        },
+        {
+            name        => 'allow_state_with_low_precedence_boolean',
+            description => 'Allow state variable with low-precedence Boolean',
             behavior    => 'boolean',
             default_string  => '0',
         },
@@ -121,6 +129,9 @@ sub violates {
                         #     Scope::Guard).
                         # {is_global} is true if the declaration is a
                         #     global (i.e. is 'our', not 'my');
+                        # {is_state_boolean} is true if the variable is
+                        #     a 'state' variable and the assignment is
+                        #     followed by a low-precedence Boolean.
                         # {is_unpacking} is true if the declaration
                         #     occurs in an argument unpacking;
                         # {taking_reference} is true if the code takes a
@@ -180,21 +191,28 @@ sub _get_variable_declarations {
             $declaration->type() } )
             or next;
 
-        my ( $assign, $is_allowed_computation, $is_unpacking );
+        my ( $assign, $is_allowed_computation, $is_state_boolean,
+            $is_unpacking );
 
         foreach my $operator ( @{ $declaration->find( 'PPI::Token::Operator' )
             || [] } ) {
             q<=> eq $operator->content()
                 or next;
             $assign = $operator;
+
             my $content = $declaration->content();
             $is_unpacking = $content =~ m<
                 = \s* (?: \@_ |
                     shift (?: \s* \@_ )? ) |
                     \$_ [[] .*? []]
                 \s* ;? \z >smx;
+
             $is_allowed_computation = $self->_is_allowed_computation(
                 $operator );
+
+            $is_state_boolean = $self->_is_state_boolean(
+                $declaration, $operator );
+
             last;
         }
 
@@ -244,6 +262,7 @@ sub _get_variable_declarations {
                 element     => $symbol,
                 is_allowed_computation => $is_allowed_computation,
                 is_global   => $is_global,
+                is_state_boolean    => $is_state_boolean,
                 is_unpacking => $is_unpacking,
                 taking_reference => scalar _taking_reference_of_variable(
                     $declaration ),
@@ -371,6 +390,21 @@ sub _is_allowed_computation {
     }
 
     return;
+}
+
+#-----------------------------------------------------------------------------
+
+sub _is_state_boolean {
+    my ( $self, $declaration, $operator ) = @_;
+    q<state> eq $declaration->type()
+        or return $FALSE;
+    my $next_sib = $operator;
+    while ( $next_sib = $next_sib->snext_sibling() ) {
+        $next_sib->isa( 'PPI::Token::Operator' )
+            and $LOW_PRECEDENCE_BOOLEAN{ $next_sib->content() }
+            and return $TRUE;
+    }
+    return $FALSE;
 }
 
 #-----------------------------------------------------------------------------
@@ -601,6 +635,9 @@ sub _get_violations {
             $declaration->{used}
                 and next;
             $declaration->{is_allowed_computation}
+                and next;
+            $declaration->{is_state_boolean}
+                and $self->{_allow_state_with_low_precedence_boolean}
                 and next;
             $declaration->{taking_reference}
                 and not $self->{_prohibit_reference_only_variables}
@@ -917,6 +954,32 @@ these, you can add a block like this to your F<.perlcriticrc> file:
 This property takes as its value a whitespace-delimited list of class or
 subroutine names. Nothing complex is done to implement this -- the
 policy simply looks at the first word after the equals sign, if any.
+
+=head2 allow_state_with_low_precedence_boolean
+
+By default, this policy handles C<state> variables as any other lexical,
+and a violation is declared if they appear only in the statement that
+declares them.
+
+One might, however, do something like
+
+    state $foo = compute_foo() or do_something_else();
+
+In this case, C<compute_foo()> is called only once, but if it returns a
+false value C<do_something_else()> will be executed every time this
+statement is encountered.
+
+If you wish to allow such code, you can add a block like this to your
+F<.perlcriticrc> file:
+
+    [Variables::ProhibitUnusedVarsStricter]
+    allow_state_with_low_precedence_boolean = 1
+
+B<Caveat:> the equivalent code
+
+    ( state $foo = compute_foo() ) || do_something_else()
+
+is B<not> currently detected by this logic.
 
 =head1 AUTHOR
 

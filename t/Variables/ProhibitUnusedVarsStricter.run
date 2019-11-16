@@ -479,10 +479,11 @@ foreach my $foo ( qw{ bar baz } ) {
 #-----------------------------------------------------------------------------
 
 ## name unused state variables
-## failures 1
+## failures 2
 ## cut
 
 state $foo = 'bar';
+state $baz = compute_baz() or do_something_else();
 
 #-----------------------------------------------------------------------------
 
@@ -492,6 +493,15 @@ state $foo = 'bar';
 
 state $bar = 'baz';
 say $bar;
+
+#-----------------------------------------------------------------------------
+
+## name state variable with low-precedence Boolean
+## parms { allow_state_with_low_precedence_boolean => '1' }
+## failures 0
+## cut
+
+state $baz = compute_baz() or do_something_else();
 
 #-----------------------------------------------------------------------------
 
