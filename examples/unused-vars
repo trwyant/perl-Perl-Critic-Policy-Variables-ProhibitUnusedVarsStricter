@@ -11,7 +11,7 @@ use Perl::Critic::Command;
 use Perl::Critic::Policy::Variables::ProhibitUnusedVarsStricter;
 use Pod::Usage;
 
-our $VERSION = '0.103_001';
+our $VERSION = '0.103_002';
 
 my %opt;
 

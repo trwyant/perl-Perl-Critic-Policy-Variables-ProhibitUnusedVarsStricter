@@ -1,3 +1,9 @@
+0.103_002	2019-12-05	T. R. Wyant
+    Replace allow_in_low_precedence_boolean with allow_in_expression,
+    and extend the implementation to suit.
+
+    This version NOT released to CPAN.
+
 0.103_001	2019-11-17	T. R. Wyant
     Add config allow_state_with_low_precedence_boolean for code like
         state $x = foo() or bar();
