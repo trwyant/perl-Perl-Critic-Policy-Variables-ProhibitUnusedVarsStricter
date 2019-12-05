@@ -96,7 +96,7 @@ sub supported_parameters { return (
             default_string  => '0',
         },
         {
-            name        => 'allow_state_with_low_precedence_boolean',
+            name        => 'allow_state_in_expression',
             description => 'Allow state variable with low-precedence Boolean',
             behavior    => 'boolean',
             default_string  => '0',
@@ -129,9 +129,9 @@ sub violates {
                         #     Scope::Guard).
                         # {is_global} is true if the declaration is a
                         #     global (i.e. is 'our', not 'my');
-                        # {is_state_boolean} is true if the variable is
-                        #     a 'state' variable and the assignment is
-                        #     followed by a low-precedence Boolean.
+                        # {is_state_in_expression} is true if the
+                        #     variable is a 'state' variable and the
+                        #     assignment is part of an expression.
                         # {is_unpacking} is true if the declaration
                         #     occurs in an argument unpacking;
                         # {taking_reference} is true if the code takes a
@@ -191,7 +191,7 @@ sub _get_variable_declarations {
             $declaration->type() } )
             or next;
 
-        my ( $assign, $is_allowed_computation, $is_state_boolean,
+        my ( $assign, $is_allowed_computation, $is_state_in_expression,
             $is_unpacking );
 
         foreach my $operator ( @{ $declaration->find( 'PPI::Token::Operator' )
@@ -210,7 +210,7 @@ sub _get_variable_declarations {
             $is_allowed_computation = $self->_is_allowed_computation(
                 $operator );
 
-            $is_state_boolean = $self->_is_state_boolean(
+            $is_state_in_expression = $self->_is_state_in_expression(
                 $declaration, $operator );
 
             last;
@@ -262,7 +262,7 @@ sub _get_variable_declarations {
                 element     => $symbol,
                 is_allowed_computation => $is_allowed_computation,
                 is_global   => $is_global,
-                is_state_boolean    => $is_state_boolean,
+                is_state_in_expression    => $is_state_in_expression,
                 is_unpacking => $is_unpacking,
                 taking_reference => scalar _taking_reference_of_variable(
                     $declaration ),
@@ -394,16 +394,29 @@ sub _is_allowed_computation {
 
 #-----------------------------------------------------------------------------
 
-sub _is_state_boolean {
+sub _is_state_in_expression {
     my ( $self, $declaration, $operator ) = @_;
     q<state> eq $declaration->type()
         or return $FALSE;
+
     my $next_sib = $operator;
     while ( $next_sib = $next_sib->snext_sibling() ) {
         $next_sib->isa( 'PPI::Token::Operator' )
             and $LOW_PRECEDENCE_BOOLEAN{ $next_sib->content() }
             and return $TRUE;
     }
+
+    my $elem = $declaration;
+    while ( $elem ) {
+        foreach my $method ( qw{ snext_sibling sprevious_sibling } ) {
+            my $sib = $elem->$method()
+                or next;
+            $sib->isa( 'PPI::Token::Operator' )
+                and return $TRUE;
+        }
+        $elem = $elem->parent();
+    }
+
     return $FALSE;
 }
 
@@ -636,8 +649,8 @@ sub _get_violations {
                 and next;
             $declaration->{is_allowed_computation}
                 and next;
-            $declaration->{is_state_boolean}
-                and $self->{_allow_state_with_low_precedence_boolean}
+            $declaration->{is_state_in_expression}
+                and $self->{_allow_state_in_expression}
                 and next;
             $declaration->{taking_reference}
                 and not $self->{_prohibit_reference_only_variables}
@@ -895,7 +908,7 @@ Most of these are because the PPI parse of the original document does
 not include the declarations. The list assignment is missed because PPI
 does not parse it as containing a
 L<PPI::Statement::Variable|PPI::Statement::Variable>. However, variables
-B<used> inside such construction B<will> be detected.
+B<used> inside such constructions B<will> be detected.
 
 
 =head1 CONFIGURATION
@@ -933,8 +946,9 @@ F<.perlcriticrc> file:
 
 By default, this policy allows otherwise-unused variables if they are
 being returned from a subroutine, under the presumption that they are
-going to be used as lvalues. If you wish to declare a violation in this
-case, you can add a block like this to your F<.perlcriticrc> file:
+going to be used as lvalues by the caller. If you wish to declare a
+violation in this case, you can add a block like this to your
+F<.perlcriticrc> file:
 
     [Variables::ProhibitUnusedVarsStricter]
     prohibit_returned_lexicals = 1
@@ -955,7 +969,7 @@ This property takes as its value a whitespace-delimited list of class or
 subroutine names. Nothing complex is done to implement this -- the
 policy simply looks at the first word after the equals sign, if any.
 
-=head2 allow_state_with_low_precedence_boolean
+=head2 allow_state_in_expression
 
 By default, this policy handles C<state> variables as any other lexical,
 and a violation is declared if they appear only in the statement that
@@ -973,13 +987,16 @@ If you wish to allow such code, you can add a block like this to your
 F<.perlcriticrc> file:
 
     [Variables::ProhibitUnusedVarsStricter]
-    allow_state_with_low_precedence_boolean = 1
+    allow_state_in_expression = 1
 
-B<Caveat:> the equivalent code
+This allows an otherwise-unused state variable if its value appears to
+be used in an expression -- that is, if its declaration is followed by a
+low-precedence boolean, or one of its ancestors is preceded or followed
+by any operator. The latter means that something like
 
-    ( state $foo = compute_foo() ) || do_something_else()
+ my $bar = ( state $foo = compute_foo() ) + 42;
 
-is B<not> currently detected by this logic.
+will be accepted.
 
 =head1 AUTHOR
 

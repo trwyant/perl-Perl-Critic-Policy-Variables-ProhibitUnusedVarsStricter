@@ -496,11 +496,12 @@ say $bar;
 
 #-----------------------------------------------------------------------------
 
-## name state variable with low-precedence Boolean
-## parms { allow_state_with_low_precedence_boolean => '1' }
+## name state variable in expression
+## parms { allow_state_in_expression => '1' }
 ## failures 0
 ## cut
 
+( state $foo = compute_foo() ) || do_something();
 state $baz = compute_baz() or do_something_else();
 
 #-----------------------------------------------------------------------------
