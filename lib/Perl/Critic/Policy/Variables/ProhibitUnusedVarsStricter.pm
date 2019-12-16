@@ -394,11 +394,28 @@ sub _is_allowed_computation {
 
 #-----------------------------------------------------------------------------
 
+# Find cases where the value of a state variable is used by the
+# statement that declares it, or an expression in which that statement
+# appears. The user may wish to accept such variables even if the
+# variable itself appears only in the statement that declares it.
+#
+# $declaration is assumed to be a PPI::Statement::Variable. We return
+# $FALSE unless it declares state variables.
+#
+# $operator is the first assignment operator in $declaration.
+#
+# NOTE that this will never be called for stuff like
+#   $foo and state $bar = 42
+# because PPI does not parse this as a PPI::Statement::Variable.
 sub _is_state_in_expression {
     my ( $self, $declaration, $operator ) = @_;
+
+    # We're only interested in state declarations.
     q<state> eq $declaration->type()
         or return $FALSE;
 
+    # We accept things like
+    #   state $foo = bar() and ...
     my $next_sib = $operator;
     while ( $next_sib = $next_sib->snext_sibling() ) {
         $next_sib->isa( 'PPI::Token::Operator' )
@@ -406,6 +423,10 @@ sub _is_state_in_expression {
             and return $TRUE;
     }
 
+    # We accept things like
+    #     ... ( state $foo = bar() ) ...
+    # IF at least one of the ellipses has an operator adjacent to our
+    # declaration. 
     my $elem = $declaration;
     while ( $elem ) {
         foreach my $method ( qw{ snext_sibling sprevious_sibling } ) {
@@ -417,6 +438,9 @@ sub _is_state_in_expression {
         $elem = $elem->parent();
     }
 
+    # There are no other known cases where a state variable's value can
+    # be used without the variable name appearing anywhere other than
+    # its initialization.
     return $FALSE;
 }
 
