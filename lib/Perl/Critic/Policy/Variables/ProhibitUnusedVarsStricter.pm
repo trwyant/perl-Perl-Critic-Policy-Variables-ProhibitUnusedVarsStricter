@@ -42,34 +42,6 @@ Readonly::Hash my %GLOBAL_DECLARATION => (
     our     => $TRUE,
 );
 
-# Contents of regular expression to find interpolations. It captures:
-# $1 = the sigil ( '$' or '@' ), with leading cast if any
-# $2 = the variable (\w+, since we are not worried about built-ins, but
-#      possibly with enclosing {})
-# $3 = the first character of the subscript ( '[' or '{' ), if any
-# The (*SKIP) prevents backtracking past that point, which causes the
-# expression to be really, really slow on very long strings such as the
-# 447776-character one in CPAN module Bhagavatgita.
-#Readonly::Scalar my $FIND_INTERPOLATION => qr/
-#    (?: \A | (?<! [\\] ) ) (?: \\\\ )* (*SKIP)
-#    ( [\$\@]{1,2} ) ( \w+ | [{] \w+ [}] ) ( [[{]? )
-#/smx;
-#
-# But it turned out to be slightly faster (0.8 seconds versus 1 second
-# to analyze module Bhagavatgita) to capture the back slashes (if any)
-# in front of a potential interpolation, and then weed out the ones that
-# turn out to be escaped. The following captures:
-# $1 = any leading back slashes
-# $2 = the sigil ( '$' or '@' ), with leading cast if any
-# $3 = the variable (\w+, since we are not worried about built-ins, but
-#      possibly with enclosing {})
-# $4 = the first character of the subscript ( '[' or '{' ), if any
-Readonly::Scalar my $FIND_INTERPOLATION => qr<
-    ( \\* ) ( [\$\@]{1,2} ) ( \w+ | [{] \w+ [}] ) ( [[{]? )
->smx;
-
-Readonly::Scalar my $LAST_CHARACTER => -1;
-
 Readonly::Hash my %LOW_PRECEDENCE_BOOLEAN => hashify( qw{ and or xor } );
 
 #-----------------------------------------------------------------------------
