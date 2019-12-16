@@ -1,20 +1,8 @@
-0.103_002	2019-12-05	T. R. Wyant
-    Replace allow_in_low_precedence_boolean with allow_in_expression,
-    and extend the implementation to suit.
-
-    This version NOT released to CPAN.
-
-0.103_001	2019-11-17	T. R. Wyant
-    Add config allow_state_with_low_precedence_boolean for code like
-        state $x = foo() or bar();
-    
-    Yes, this is equivalent to
-        ( state $x = foo() ) || bar();
-    but I will burn that bridge when I get to it.
-
-    Eliminate redirections in POD URL links
-
-    This version NOT released to CPAN.
+0.103_01	2019-12-16	T. R. Wyant
+    Add Boolean configuration item allow_state_in_expression, which
+    allows an otherwise-unused state variable if the policy thinks the
+    computed value is also used in an expression. This item is false by
+    default.
 
 0.103		2019-08-17	T. R. Wyant
     Test POD links.
