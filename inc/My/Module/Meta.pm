@@ -83,7 +83,6 @@ sub build_required_module_versions {
 
 sub recommended_module_versions {
     return (
-        'Readonly::XS'  => 0,
         'File::Which'   => 0,
     );
 }
