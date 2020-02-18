@@ -1,4 +1,7 @@
-0.104_01	2020-01-25	T. R. Wyant
+0.105		2020-02-18	T. R. Wyant
+    examples/unused-vars is now driven by options on the command line,
+    not by a configuration file.
+
     No longer recommend Readonly::XS. Thanks to Jay Kahrman for pointing
     out that this was no longer appropriate.
 
