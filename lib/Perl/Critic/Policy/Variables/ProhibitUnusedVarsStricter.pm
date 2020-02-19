@@ -42,6 +42,8 @@ Readonly::Hash my %GLOBAL_DECLARATION => (
     our     => $TRUE,
 );
 
+Readonly::Scalar my $PACKAGE    => '_' . __PACKAGE__;
+
 Readonly::Hash my %LOW_PRECEDENCE_BOOLEAN => hashify( qw{ and or xor } );
 
 #-----------------------------------------------------------------------------
@@ -85,62 +87,68 @@ sub violates {
 #   my ( $self, $elem, $document ) = @_;
     my ( $self, undef, $document ) = @_;
 
-    my %is_declaration; # Keyed by refaddr of PPI::Token::Symbol. True
-                        # if the object represents a declaration.
+    $self->{$PACKAGE} = {
+        declared        => {},  # Keyed by PPI::Token::Symbol->symbol().
+                                # Values are a list of hashes
+                                # representing declarations of the given
+                                # symbol, in reverse order. In each
+                                # hash:
+                                # {declaration} is the PPI statement
+                                #     object in which the variable is
+                                #     declared;
+                                # {element} is the PPI::Token::Symbol
+                                #     {is_allowed_computation} is true
+                                #     if the value of the symbol is
+                                #     initialized using one of the
+                                #     allowed subroutines or classes
+                                #     (e.g.  Scope::Guard).
+                                # {is_global} is true if the declaration
+                                #     is a global (i.e. is 'our', not 'my');
+                                # {is_state_in_expression} is true if
+                                #     the variable is a 'state' variable
+                                #     and the assignment is part of an
+                                #     expression.
+                                # {is_unpacking} is true if the
+                                #     declaration occurs in an argument
+                                #     unpacking;
+                                # {taking_reference} is true if the code
+                                #     takes a reference to the declared
+                                #     variable;
+                                # {used} is a count of the number of
+                                #     times that declaration was used,
+                                #     initialized to 0.
+        is_declaration  => {},  # Keyed by refaddr of PPI::Token::Symbol.
+                                # True if the object represents a
+                                # declaration.
+    };
 
-    my %declared;       # Keyed by PPI::Token::Symbol->symbol(). Values
-                        # are a list of hashes representing declarations
-                        # of the given symbol, in reverse order. In each
-                        # hash:
-                        # {declaration} is the PPI statement object in
-                        #     which the variable is declared;
-                        # {element} is the PPI::Token::Symbol
-                        # {is_allowed_computation} is true if the value
-                        #     of the symbol is initialized using one of
-                        #     the allowed subroutines or classes (e.g.
-                        #     Scope::Guard).
-                        # {is_global} is true if the declaration is a
-                        #     global (i.e. is 'our', not 'my');
-                        # {is_state_in_expression} is true if the
-                        #     variable is a 'state' variable and the
-                        #     assignment is part of an expression.
-                        # {is_unpacking} is true if the declaration
-                        #     occurs in an argument unpacking;
-                        # {taking_reference} is true if the code takes a
-                        #     reference to the declared variable;
-                        # {used} is a count of the number of times that
-                        #     declaration was used, initialized to 0.
+    $self->_get_symbol_declarations( $document );
 
-    $self->_get_symbol_declarations(
-        $document, \%declared, \%is_declaration );
+    $self->_get_symbol_uses( $document );
 
-    _get_symbol_uses( $document, undef, \%declared, \%is_declaration );
+    $self->_get_regexp_symbol_uses( $document );
 
-    _get_regexp_symbol_uses( $document, \%declared, \%is_declaration );
+    $self->_get_double_quotish_string_uses( $document );
 
-    _get_double_quotish_string_uses( $document, undef, \%declared );
-
-    return $self->_get_violations( \%declared );
+    return $self->_get_violations();
 
 }
 
 #-----------------------------------------------------------------------------
 
 sub _get_symbol_declarations {
-    my ( $self, $document, $declared, $is_declaration ) = @_;
+    my ( $self, $document ) = @_;
 
-    $self->_get_variable_declarations( $document, $declared,
-        $is_declaration );
+    $self->_get_variable_declarations( $document );
 
-    _get_stray_variable_declarations( $document, $declared,
-        $is_declaration );
+    $self->_get_stray_variable_declarations( $document );
 
     # Because we need multiple passes to find all the declarations, we
     # have to put them in reverse order when we're done.
     # Re the 'no critic' annotation. I understand that 'reverse ...' is
     # faster and clearer than 'sort { $b cmp $a } ...', but I think the
     # dereferenes negate this.
-    foreach my $decls ( values %{ $declared } ) {
+    foreach my $decls ( values %{ $self->{$PACKAGE}{declared} } ) {
         @{ $decls } = map { $_->[0] }
             sort { $b->[1][0] <=> $a->[1][0] || $b->[1][1] <=> $a->[1][1] } ## no critic (ProhibitReverseSortBlock)
             map { [ $_, $_->{element}->location() ] }
@@ -154,7 +162,7 @@ sub _get_symbol_declarations {
 #-----------------------------------------------------------------------------
 
 sub _get_variable_declarations {
-    my ( $self, $document, $declared, $is_declaration ) = @_;
+    my ( $self, $document ) = @_;
 
     foreach my $declaration ( @{ $document->find( 'PPI::Statement::Variable' )
         || [] } ) {
@@ -224,8 +232,8 @@ sub _get_variable_declarations {
                     or next;
             }
 
-            _record_symbol_definition(
-                $symbol, $declaration, $declared, $is_declaration,
+            $self->_record_symbol_definition(
+                $symbol, $declaration,
                 is_allowed_computation  => $is_allowed_computation,
                 is_global               => $is_global,
                 is_state_in_expression  => $is_state_in_expression,
@@ -258,7 +266,7 @@ sub _get_variable_declarations {
     # are parens, PPI produces a PPI::Statement::Variable.
 
     sub _get_stray_variable_declarations {
-        my ( $document, $declared, $is_declaration ) = @_;
+        my ( $self, $document ) = @_;
 
         foreach (
             [ 'PPI::Statement::Compound' => {
@@ -297,8 +305,8 @@ sub _get_variable_declarations {
                     $symbol->isa( 'PPI::Token::Symbol' )
                         or next;
 
-                    _record_symbol_definition(
-                        $symbol, $declaration, $declared, $is_declaration,
+                    $self->_record_symbol_definition(
+                        $symbol, $declaration,
                         is_global           => $is_global,
                         returned_lexical    => $info->{returned_lexical},
                     );
@@ -455,15 +463,15 @@ sub _returned_lexical {
         hashify( qw{ @ $ % } );
 
     sub _get_symbol_uses {
-        my ( $document, $scope_of_record, $declared, $is_declaration ) = @_;
+        my ( $self, $document, $scope_of_record ) = @_;
 
         foreach my $symbol (
             @{ $document->find( 'PPI::Token::Symbol' ) || [] }
         ) {
-            $is_declaration->{ refaddr( $symbol ) } and next;
+            $self->{$PACKAGE}{is_declaration}->{ refaddr( $symbol ) } and next;
 
-            _record_symbol_use( $document, $symbol->symbol(),
-                $scope_of_record || $symbol, $declared );
+            $self->_record_symbol_use( $document, $symbol,
+                $scope_of_record || $symbol );
 
         }
 
@@ -479,8 +487,8 @@ sub _returned_lexical {
             my $name = $elem->content();
             $name =~ s/ \A \$ [#] /@/smx or next;
 
-            _record_symbol_use( $document, $name,
-                $scope_of_record || $elem, $declared );
+            $self->_record_symbol_use( $document, $name,
+                $scope_of_record || $elem );
         }
 
         # Occasionally you see something like ${foo} outside quotes.
@@ -513,10 +521,9 @@ sub _returned_lexical {
             $grand_kids[0]->isa( 'PPI::Token::Word' )
                 or next;
 
-            _record_symbol_use( $document,
+            $self->_record_symbol_use( $document,
                 $sigil . $grand_kids[0]->content(),
-                $scope_of_record || $elem, $declared
-            );
+                $scope_of_record || $elem );
         }
 
         return;
@@ -527,13 +534,12 @@ sub _returned_lexical {
 #-----------------------------------------------------------------------------
 
 sub _record_symbol_definition {
-    my ( $symbol, $declaration, $declared, $is_declaration, %arg ) = @_;
+    my ( $self, $symbol, $declaration, %arg ) = @_;
 
     my $ref_addr = refaddr( $symbol );
     my $sym_name = $symbol->symbol();
 
-    $is_declaration
-        and $is_declaration->{ $ref_addr } = 1;
+    $self->{$PACKAGE}{is_declaration}{$ref_addr} = 1;
 
     $arg{declaration}   = $declaration;
     $arg{element}       = $symbol;
@@ -551,7 +557,7 @@ sub _record_symbol_definition {
             or $arg{$key} = $FALSE;
     }
 
-    push @{ $declared->{ $sym_name } ||= [] }, \%arg;
+    push @{ $self->{$PACKAGE}{declared}{ $sym_name } ||= [] }, \%arg;
 
     return;
 }
@@ -559,9 +565,21 @@ sub _record_symbol_definition {
 #-----------------------------------------------------------------------------
 
 sub _record_symbol_use {
-    my ( $document, $symbol_name, $scope, $declared ) = @_;
-    my $declaration = $declared->{ $symbol_name }
-        or return;
+    my ( $self, $document, $symbol, $scope ) = @_;
+
+    my $declaration;
+    my $symbol_name;
+    if ( ref $symbol ) {
+        $symbol_name = $symbol->symbol();
+        if ( ! ( $declaration = $self->{$PACKAGE}{declared}{$symbol_name} ) ) {
+            return;
+        }
+    } else {
+        $declaration = $self->{$PACKAGE}{declared}{$symbol}
+            or return;
+        $symbol_name = $symbol;
+        $symbol = undef;
+    }
 
     foreach my $decl_scope ( @{ $declaration } ) {
         _element_is_in_lexical_scope_after_statement_containing(
@@ -578,7 +596,7 @@ sub _record_symbol_use {
 #-----------------------------------------------------------------------------
 
 sub _get_double_quotish_string_uses {
-    my ( $document, $scope_of_record, $declared ) = @_;
+    my ( $self, $document, $scope_of_record ) = @_;
 
     foreach my $class ( qw{
         PPI::Token::Quote::Double
@@ -595,8 +613,8 @@ sub _get_double_quotish_string_uses {
                 or next;
 
             foreach my $var ( $str->variables() ) {
-                _record_symbol_use( $document, $var,
-                    $scope_of_record || $double_quotish, $declared );
+                $self->_record_symbol_use( $document, $var,
+                    $scope_of_record || $double_quotish );
             }
         }
     }
@@ -607,7 +625,7 @@ sub _get_double_quotish_string_uses {
 #-----------------------------------------------------------------------------
 
 sub _get_regexp_symbol_uses {
-    my ( $document, $declared, $is_declaration ) = @_;
+    my ( $self, $document ) = @_;
 
     foreach my $class ( qw{
         PPI::Token::Regexp::Match
@@ -628,12 +646,12 @@ sub _get_regexp_symbol_uses {
                     '-filename-override'    => $document->filename(),
                 );
 
-                _get_symbol_uses( $subdoc, $regex,
-                    $declared, $is_declaration );
+                # FIXME I do not believe that this properly handles the
+                # case where the code actually declares symbols.
+                $self->_get_symbol_uses( $subdoc, $regex );
 
                 # Yes, someone did s/.../"..."/e.
-                _get_double_quotish_string_uses( $subdoc,
-                    $regex, $declared );
+                $self->_get_double_quotish_string_uses( $subdoc, $regex );
 
             }
 
@@ -647,11 +665,11 @@ sub _get_regexp_symbol_uses {
 #-----------------------------------------------------------------------------
 
 sub _get_violations {
-    my ( $self, $declared ) = @_;
+    my ( $self ) = @_;
 
     my @in_violation;
 
-    foreach my $name ( values %{ $declared } ) {
+    foreach my $name ( values %{ $self->{$PACKAGE}{declared} } ) {
         foreach my $declaration ( @{ $name } ) {
             $declaration->{is_global}
                 and next;
