@@ -117,9 +117,17 @@ sub violates {
                                 # {used} is a count of the number of
                                 #     times that declaration was used,
                                 #     initialized to 0.
+
         is_declaration  => {},  # Keyed by refaddr of PPI::Token::Symbol.
                                 # True if the object represents a
                                 # declaration.
+
+        need_sort => $FALSE,    # Boolean that says whether the symbol
+                                # declarations need to be sorted in
+                                # lexical order. Recording a declaration
+                                # must set this. Recording a use must
+                                # clear this, doing the sort if it was
+                                # previously set.
     };
 
     $self->_get_symbol_declarations( $document );
@@ -142,18 +150,6 @@ sub _get_symbol_declarations {
     $self->_get_variable_declarations( $document );
 
     $self->_get_stray_variable_declarations( $document );
-
-    # Because we need multiple passes to find all the declarations, we
-    # have to put them in reverse order when we're done.
-    # Re the 'no critic' annotation. I understand that 'reverse ...' is
-    # faster and clearer than 'sort { $b cmp $a } ...', but I think the
-    # dereferenes negate this.
-    foreach my $decls ( values %{ $self->{$PACKAGE}{declared} } ) {
-        @{ $decls } = map { $_->[0] }
-            sort { $b->[1][0] <=> $a->[1][0] || $b->[1][1] <=> $a->[1][1] } ## no critic (ProhibitReverseSortBlock)
-            map { [ $_, $_->{element}->location() ] }
-            @{ $decls };
-    }
 
     return;
 
@@ -559,6 +555,8 @@ sub _record_symbol_definition {
 
     push @{ $self->{$PACKAGE}{declared}{ $sym_name } ||= [] }, \%arg;
 
+    $self->{$PACKAGE}{need_sort} = $TRUE;
+
     return;
 }
 
@@ -581,12 +579,28 @@ sub _record_symbol_use {
         $symbol = undef;
     }
 
+    if ( delete $self->{$PACKAGE}{need_sort} ) {
+        # Because we need multiple passes to find all the declarations,
+        # we have to put them in reverse order when we're done. We need
+        # to repeat the check because of the possibility of picking up
+        # declarations made in passing while trying to find uses.
+        # Re the 'no critic' annotation: I understand that 'reverse ...'
+        # is faster and clearer than 'sort { $b cmp $a } ...', but I
+        # think the dereferenes negate this.
+        foreach my $decls ( values %{ $self->{$PACKAGE}{declared} } ) {
+            @{ $decls } = map { $_->[0] }
+                sort { $b->[1][0] <=> $a->[1][0] || $b->[1][1] <=> $a->[1][1] } ## no critic (ProhibitReverseSortBlock)
+                map { [ $_, $_->{element}->location() ] }
+                @{ $decls };
+        }
+    }
+
     foreach my $decl_scope ( @{ $declaration } ) {
         _element_is_in_lexical_scope_after_statement_containing(
             $scope, $decl_scope->{declaration} )
             or next;
         $decl_scope->{used}++;
-        last;
+        return;
     }
 
     return;
