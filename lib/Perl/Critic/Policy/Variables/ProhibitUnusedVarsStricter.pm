@@ -224,24 +224,17 @@ sub _get_variable_declarations {
                     or next;
             }
 
-            $is_declaration->{ refaddr( $symbol ) } = 1;
-
-            # Yes, the hash values are supposed to be in reverse order.
-            # But since we have to make multiple passes to find all the
-            # declarations, we put them in the correct order later.
-            push @{ $declared->{ $symbol->symbol() } ||= [] }, {
-                declaration => $declaration,
-                element     => $symbol,
-                is_allowed_computation => $is_allowed_computation,
-                is_global   => $is_global,
-                is_state_in_expression    => $is_state_in_expression,
-                is_unpacking => $is_unpacking,
+            _record_symbol_definition(
+                $symbol, $declaration, $declared, $is_declaration,
+                is_allowed_computation  => $is_allowed_computation,
+                is_global               => $is_global,
+                is_state_in_expression  => $is_state_in_expression,
+                is_unpacking            => $is_unpacking,
                 taking_reference => scalar _taking_reference_of_variable(
                     $declaration ),
                 returned_lexical => scalar _returned_lexical(
                     $declaration ),
-                used        => 0,
-            };
+            );
 
         }
 
@@ -304,22 +297,11 @@ sub _get_variable_declarations {
                     $symbol->isa( 'PPI::Token::Symbol' )
                         or next;
 
-                    $is_declaration->{ refaddr( $symbol ) } = 1;
-
-                    # Yes, the hash values are supposed to be in reverse
-                    # order. But since we have to make multiple passes
-                    # to find all the declarations, we put them in the
-                    # correct order later.
-                    push @{ $declared->{ $symbol->symbol() } ||= [] }, {
-                        declaration         => $declaration,
-                        element             => $symbol,
-                        is_allowed_computation => $FALSE,
+                    _record_symbol_definition(
+                        $symbol, $declaration, $declared, $is_declaration,
                         is_global           => $is_global,
-                        is_unpacking        => $FALSE,
-                        taking_reference    => $FALSE,
                         returned_lexical    => $info->{returned_lexical},
-                        used                => 0,
-                    };
+                    );
 
                 }
 
@@ -540,6 +522,38 @@ sub _returned_lexical {
         return;
     }
 
+}
+
+#-----------------------------------------------------------------------------
+
+sub _record_symbol_definition {
+    my ( $symbol, $declaration, $declared, $is_declaration, %arg ) = @_;
+
+    my $ref_addr = refaddr( $symbol );
+    my $sym_name = $symbol->symbol();
+
+    $is_declaration
+        and $is_declaration->{ $ref_addr } = 1;
+
+    $arg{declaration}   = $declaration;
+    $arg{element}       = $symbol;
+    $arg{used}          = 0;
+
+    foreach my $key ( qw{
+        is_allowed_computation
+        is_global
+        is_state_in_expression
+        is_unpacking
+        taking_reference
+        returned_lexical
+        } ) {
+        exists $arg{$key}
+            or $arg{$key} = $FALSE;
+    }
+
+    push @{ $declared->{ $sym_name } ||= [] }, \%arg;
+
+    return;
 }
 
 #-----------------------------------------------------------------------------
