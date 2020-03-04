@@ -61,15 +61,19 @@ $critic->add_policy(
     -config => \%opt,
 );
 
-Perl::Critic::Violation::set_format(
-    defined $format ? $format :
-    ( @ARGV > 1 || -d $ARGV[0] ) ?
-        $DEFAULT_MULTI_FILE_FORMAT :
-        $DEFAULT_SINGLE_FILE_FORMAT
-);
+{
+    no warnings qw{ newline };
+    Perl::Critic::Violation::set_format(
+        defined $format ? $format :
+        ( @ARGV > 1 || -d $ARGV[0] ) ?
+            $DEFAULT_MULTI_FILE_FORMAT :
+            $DEFAULT_SINGLE_FILE_FORMAT
+    );
+}
 
 foreach my $fn ( @ARGV ) {
 
+    no warnings qw{ newline };
     foreach my $pf ( -e $fn ? all_perl_files( $fn ) : \$fn ) {
         my @violations = Perl::Critic::Violation::sort_by_location(
             $critic->critique( $pf ) );
