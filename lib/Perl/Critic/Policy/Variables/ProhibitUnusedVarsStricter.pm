@@ -44,6 +44,7 @@ Readonly::Hash my %GLOBAL_DECLARATION => (
 
 Readonly::Scalar my $PACKAGE    => '_' . __PACKAGE__;
 
+Readonly::Hash my %IS_COMMA     => hashify( $COMMA, $FATCOMMA );
 Readonly::Hash my %LOW_PRECEDENCE_BOOLEAN => hashify( qw{ and or xor } );
 
 #-----------------------------------------------------------------------------
@@ -157,9 +158,15 @@ sub _get_symbol_declarations {
 
 #-----------------------------------------------------------------------------
 
-sub _get_variable_declarations {
+sub _get_variable_declarations_old {
     my ( $self, $document ) = @_;
 
+    # FIXME This handles the 'normal' cases
+    #    my $foo;
+    #    my $foo = 42;
+    #    my ( $foo, $bar ... );
+    # but not
+    #    ( my $foo, my $bar = 42, ... );
     foreach my $declaration ( @{ $document->find( 'PPI::Statement::Variable' )
         || [] } ) {
 
@@ -240,6 +247,109 @@ sub _get_variable_declarations {
                     $declaration ),
             );
 
+        }
+
+    }
+
+    return;
+}
+
+sub _get_variable_declarations {
+    my ( $self, $document ) = @_;
+
+    foreach my $declaration ( @{ $document->find( 'PPI::Statement::Variable' )
+        || [] } ) {
+
+        # This _should_ be the initial 'my', 'our' 'state'
+        my $elem = $declaration->schild( 0 )
+            or next;
+
+        my $is_unpacking = $declaration->content() =~ m<
+            = \s* (?: \@_ |
+                shift (?: \s* \@_ )? ) |
+                \$_ [[] .*? []]
+            \s* ;? \z >smx;
+
+        my $taking_reference = _taking_reference_of_variable(
+            $declaration );
+
+        my $returned_lexical = _returned_lexical( $declaration );
+
+        while ( 1 ) {
+
+            # Looking for 'my', 'our', or 'state'
+            $elem->isa( 'PPI::Token::Word' )
+                or next;
+            defined( my $is_global = $GLOBAL_DECLARATION{
+                $elem->content()} )
+                or next;
+
+            $elem = $elem->snext_sibling()
+                or last;
+
+            # We can't just look for symbols, since PPI parses the
+            # parens in
+            # open( my $fh, '>&', \*STDOUT )
+            # as a PPI::Statement::Variable, and we get a false positive
+            # on STDOUT.
+            my @symbol_list;
+            if ( $elem->isa( 'PPI::Token::Symbol' ) ) {
+                push @symbol_list, $elem;
+            } elsif ( $elem->isa( 'PPI::Structure::List' ) ) {
+                push @symbol_list, @{
+                    $elem->find( 'PPI::Token::Symbol' ) || [] };
+            } else {
+                next;
+            }
+
+            my ( $assign, $is_allowed_computation,
+                $is_state_in_expression );
+
+            while ( $elem = $elem->snext_sibling() ) {
+                $elem->isa( 'PPI::Token::Operator' )
+                    or next;
+                my $content = $elem->content();
+                $IS_COMMA{$content}
+                    and last;
+                if ( $EQUAL eq $content ) {
+                    $assign = $elem;
+
+                    $is_allowed_computation = $self->_is_allowed_computation(
+                        $assign );
+
+                    $is_state_in_expression = $self->_is_state_in_expression(
+                        $declaration, $assign );
+
+                    last;
+                }
+            }
+
+                foreach my $symbol ( @symbol_list ) {
+
+                    if ( $assign ) {
+                        $symbol->line_number() < $assign->line_number()
+                            or $symbol->line_number() == $assign->line_number()
+                            and $symbol->column_number() < $assign->column_number()
+                            or next;
+                    }
+
+                    $self->_record_symbol_definition(
+                        $symbol, $declaration,
+                        is_allowed_computation  => $is_allowed_computation,
+                        is_global               => $is_global,
+                        is_state_in_expression  => $is_state_in_expression,
+                        is_unpacking            => $is_unpacking,
+                        taking_reference        => $taking_reference,
+                        returned_lexical        => $returned_lexical,
+                    );
+
+                }
+
+
+        } continue {
+            $elem
+                and $elem = $elem->snext_sibling()
+                or last;
         }
 
     }

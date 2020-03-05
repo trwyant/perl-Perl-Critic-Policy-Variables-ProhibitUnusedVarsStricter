@@ -397,16 +397,18 @@ print { $fh } "Hello, sailor!\n";
 
 \( my $foo = 'bar' );
 \do { my $bar = 'baz' };
+\( my $x, my $y );
 
 #-----------------------------------------------------------------------------
 
 ## name Taking a reference is not OK if the user says not
 ## parms { prohibit_reference_only_variables => '1' }
-## failures 2
+## failures 4
 ## cut
 
 \( my $foo = 'bar' );
 \do { my $bar = 'baz' };
+\( my $x, my $y );
 
 #-----------------------------------------------------------------------------
 
