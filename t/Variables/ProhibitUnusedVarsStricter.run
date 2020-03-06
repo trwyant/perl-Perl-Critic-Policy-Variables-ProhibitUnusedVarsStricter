@@ -591,6 +591,23 @@ if ( my ( undef, $x ) = @{ $x } ) {
 
 #-----------------------------------------------------------------------------
 
+## name Unused variables declared in passing
+## failures 1
+## cut
+
+Readonly::Scalar my $foo = 'bar';
+
+#-----------------------------------------------------------------------------
+
+## name Variables declared in passing
+## failures 0
+## cut
+
+Readonly::Scalar my $foo = 'bar';
+say "$foo";
+
+#-----------------------------------------------------------------------------
+
 # Local Variables:
 #   mode: cperl
 #   cperl-indent-level: 4

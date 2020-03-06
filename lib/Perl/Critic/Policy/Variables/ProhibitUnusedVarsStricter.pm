@@ -47,6 +47,20 @@ Readonly::Scalar my $PACKAGE    => '_' . __PACKAGE__;
 Readonly::Hash my %IS_COMMA     => hashify( $COMMA, $FATCOMMA );
 Readonly::Hash my %LOW_PRECEDENCE_BOOLEAN => hashify( qw{ and or xor } );
 
+Readonly::Array my @DOUBLE_QUOTISH => qw{
+    PPI::Token::Quote::Double
+    PPI::Token::Quote::Interpolate
+    PPI::Token::QuoteLike::Backtick
+    PPI::Token::QuoteLike::Command
+    PPI::Token::QuoteLike::Readline
+    PPI::Token::HereDoc
+};
+Readonly::Array my @REGEXP_ISH => qw{
+    PPI::Token::Regexp::Match
+    PPI::Token::Regexp::Substitute
+    PPI::Token::QuoteLike::Regexp
+};
+
 #-----------------------------------------------------------------------------
 
 sub supported_parameters { return (
@@ -76,6 +90,17 @@ sub supported_parameters { return (
             behavior    => 'boolean',
             default_string  => '0',
         },
+        {
+            name        => 'dump',
+            description => 'UNSUPPORTED: Dump symbol definitions',
+            behavior    => 'boolean',
+            default_string  => '0',
+        },
+        {
+            name        => 'trace',
+            description => 'UNSUPPORTED: Trace variable processing',
+            behavior    => 'string list',
+        },
     ) }
 
 sub default_severity     { return $SEVERITY_MEDIUM       }
@@ -98,7 +123,7 @@ sub violates {
                                 #     object in which the variable is
                                 #     declared;
                                 # {element} is the PPI::Token::Symbol
-                                #     {is_allowed_computation} is true
+                                # {is_allowed_computation} is true
                                 #     if the value of the symbol is
                                 #     initialized using one of the
                                 #     allowed subroutines or classes
@@ -129,6 +154,9 @@ sub violates {
                                 # must set this. Recording a use must
                                 # clear this, doing the sort if it was
                                 # previously set.
+
+        ppix_quotelike  => {},  # Cache of PPIx::QuoteLike objects,
+                                # indexed by refaddr of parent element.
     };
 
     $self->_get_symbol_declarations( $document );
@@ -139,8 +167,39 @@ sub violates {
 
     $self->_get_double_quotish_string_uses( $document );
 
+    $self->{_dump}
+        and $self->_dump();
+
     return $self->_get_violations();
 
+}
+
+#-----------------------------------------------------------------------------
+
+sub _dump {
+    my ( $self ) = @_;
+    foreach my $name ( sort keys %{ $self->{$PACKAGE}{declared} } ) {
+        # The annotation is needed because print { STDERR } ... does not
+        # compile
+        print STDERR "$name\n"; ## no critic (RequireBracedFileHandleWithPrint)
+        foreach my $decl ( @{ $self->{$PACKAGE}{declared}{$name} } ) {
+            my $sym = $decl->{element};
+            my $fn = $sym->logical_filename();
+            if ( defined $fn ) {
+                $fn =~ s/ (?= [\\'] ) /\\/smxg;
+                $fn = "'$fn'";
+            } else {
+                $fn = 'undef';
+            }
+            printf STDERR ## no critic (RequireBracedFileHandleWithPrint)
+                "    %s line %d column %d used %d\n",
+                $fn,
+                $sym->logical_line_number(),
+                $sym->column_number(),
+                $decl->{used};
+        }
+    }
+    return;
 }
 
 #-----------------------------------------------------------------------------
@@ -158,107 +217,62 @@ sub _get_symbol_declarations {
 
 #-----------------------------------------------------------------------------
 
-sub _get_variable_declarations_old {
-    my ( $self, $document ) = @_;
-
-    # FIXME This handles the 'normal' cases
-    #    my $foo;
-    #    my $foo = 42;
-    #    my ( $foo, $bar ... );
-    # but not
-    #    ( my $foo, my $bar = 42, ... );
-    foreach my $declaration ( @{ $document->find( 'PPI::Statement::Variable' )
-        || [] } ) {
-
-        defined( my $is_global = $GLOBAL_DECLARATION{
-            $declaration->type() } )
-            or next;
-
-        my ( $assign, $is_allowed_computation, $is_state_in_expression,
-            $is_unpacking );
-
-        foreach my $operator ( @{ $declaration->find( 'PPI::Token::Operator' )
-            || [] } ) {
-            q<=> eq $operator->content()
-                or next;
-            $assign = $operator;
-
-            my $content = $declaration->content();
-            $is_unpacking = $content =~ m<
-                = \s* (?: \@_ |
-                    shift (?: \s* \@_ )? ) |
-                    \$_ [[] .*? []]
-                \s* ;? \z >smx;
-
-            $is_allowed_computation = $self->_is_allowed_computation(
-                $operator );
-
-            $is_state_in_expression = $self->_is_state_in_expression(
-                $declaration, $operator );
-
-            last;
-        }
-
-        # We _should_ always get a $first_operand. However, given
-        #   use Object::InsideOut;
-        #       .
-        #       .
-        #       ,
-        #   my @state : Field : Arg(state) : Get(state);
-        # (which appears in MetasploitExpress::Parser::Host), PPI parses
-        # the second and third occurrences of the string 'state' as a
-        # PPI::Statement::Variable, when it probably ought to be a
-        # PPI::Token::Word. We need to protect ourselves, so ...
-        my $first_operand = $declaration->schild( 1 )
-            or next;
-
-        # We can't just look for symbols, since PPI parses the parens in
-        # open( my $fh, '>&', \*STDOUT )
-        # as a PPI::Statement::Variable, and we get a false positive on
-        # STDOUT.
-        my @symbol_list;
-        if ( $first_operand->isa( 'PPI::Token::Symbol' ) ) {
-            push @symbol_list, $first_operand;
-        } elsif ( $first_operand->isa( 'PPI::Structure::List' ) ) {
-            push @symbol_list, @{
-                $first_operand->find( 'PPI::Token::Symbol' ) || [] };
-        } else {
-            next;
-        }
-
-        foreach my $symbol ( @symbol_list ) {
-
-            if ( $assign ) {
-                $symbol->line_number() < $assign->line_number()
-                    or $symbol->line_number() == $assign->line_number()
-                    and $symbol->column_number() < $assign->column_number()
-                    or next;
-            }
-
-            $self->_record_symbol_definition(
-                $symbol, $declaration,
-                is_allowed_computation  => $is_allowed_computation,
-                is_global               => $is_global,
-                is_state_in_expression  => $is_state_in_expression,
-                is_unpacking            => $is_unpacking,
-                taking_reference => scalar _taking_reference_of_variable(
-                    $declaration ),
-                returned_lexical => scalar _returned_lexical(
-                    $declaration ),
-            );
-
-        }
-
-    }
-
-    return;
+# We assume the argument is actually eligible for this operation.
+sub _get_ppix_quotelike {
+    my ( $self, $elem ) = @_;
+    return $self->{$PACKAGE}{ppix_quotelike}{ refaddr $elem } ||=
+        PPIx::QuoteLike->new( $elem );
 }
 
-sub _get_variable_declarations {
+#-----------------------------------------------------------------------------
+
+sub _get_ppi_statement_variable {
+    my ( $document ) = @_;
+
+    my @rslt = @{ $document->find( 'PPI::Statement::Variable' ) || [] };
+
+=begin comment
+
+    foreach my $class ( @DOUBLE_QUOTISH ) {
+        foreach my $elem ( @{ $document->find( $class ) || [] } ) {
+            my $str = $self->_get_ppix_quotelike( $elem )
+                or next;
+            foreach my $code ( @{ $pre->find(
+                'PPIx::QuoteLike::Token::Interpolation' ) || [] } ) {
+                my $ppi = $code->ppi()
+                    or next;
+                push @rslt, _get_ppi_statement_variable( $ppi );
+            }
+        }
+    }
+
+    foreach my $class ( @REGEXP_ISH ) {
+        foreach my $elem ( @{ $document->find( $class ) || [] } ) {
+            my $pre = $document->ppix_regexp_from_element( $elem )
+                or next;
+            foreach my $code ( @{ $pre->find(
+                'PPIx::Regexp::Token::Code' ) || [] } ) {
+                my $ppi = $code->ppi()
+                    or next;
+                push @rslt, _get_ppi_statement_variable( $ppi );
+            }
+        }
+    }
+
+=end comment
+
+=cut
+
+    return @rslt;
+}
+
+#-----------------------------------------------------------------------------
+
+# Sorry, but this is just basicly hard.
+sub _get_variable_declarations {    ## no critic (ProhibitExcessComplexity)
     my ( $self, $document ) = @_;
 
-    foreach my $declaration ( @{ $document->find( 'PPI::Statement::Variable' )
-        || [] } ) {
+    foreach my $declaration ( _get_ppi_statement_variable( $document ) ) {
 
         # This _should_ be the initial 'my', 'our' 'state'
         my $elem = $declaration->schild( 0 )
@@ -324,26 +338,26 @@ sub _get_variable_declarations {
                 }
             }
 
-                foreach my $symbol ( @symbol_list ) {
+            foreach my $symbol ( @symbol_list ) {
 
-                    if ( $assign ) {
-                        $symbol->line_number() < $assign->line_number()
-                            or $symbol->line_number() == $assign->line_number()
-                            and $symbol->column_number() < $assign->column_number()
-                            or next;
-                    }
-
-                    $self->_record_symbol_definition(
-                        $symbol, $declaration,
-                        is_allowed_computation  => $is_allowed_computation,
-                        is_global               => $is_global,
-                        is_state_in_expression  => $is_state_in_expression,
-                        is_unpacking            => $is_unpacking,
-                        taking_reference        => $taking_reference,
-                        returned_lexical        => $returned_lexical,
-                    );
-
+                if ( $assign ) {
+                    $symbol->line_number() < $assign->line_number()
+                        or $symbol->line_number() == $assign->line_number()
+                        and $symbol->column_number() < $assign->column_number()
+                        or next;
                 }
+
+                $self->_record_symbol_definition(
+                    $symbol, $declaration,
+                    is_allowed_computation  => $is_allowed_computation,
+                    is_global               => $is_global,
+                    is_state_in_expression  => $is_state_in_expression,
+                    is_unpacking            => $is_unpacking,
+                    taking_reference        => $taking_reference,
+                    returned_lexical        => $returned_lexical,
+                );
+
+            }
 
 
         } continue {
@@ -569,7 +583,7 @@ sub _returned_lexical {
         hashify( qw{ @ $ % } );
 
     sub _get_symbol_uses {
-        my ( $self, $document, $scope_of_record ) = @_;
+        my ( $self, $document, @scope_of_record ) = @_;
 
         foreach my $symbol (
             @{ $document->find( 'PPI::Token::Symbol' ) || [] }
@@ -577,7 +591,7 @@ sub _returned_lexical {
             $self->{$PACKAGE}{is_declaration}->{ refaddr( $symbol ) } and next;
 
             $self->_record_symbol_use( $document, $symbol,
-                $scope_of_record || $symbol );
+                @scope_of_record );
 
         }
 
@@ -594,7 +608,7 @@ sub _returned_lexical {
             $name =~ s/ \A \$ [#] /@/smx or next;
 
             $self->_record_symbol_use( $document, $name,
-                $scope_of_record || $elem );
+                $elem, @scope_of_record );
         }
 
         # Occasionally you see something like ${foo} outside quotes.
@@ -629,7 +643,7 @@ sub _returned_lexical {
 
             $self->_record_symbol_use( $document,
                 $sigil . $grand_kids[0]->content(),
-                $scope_of_record || $elem );
+                $elem, @scope_of_record );
         }
 
         return;
@@ -639,6 +653,11 @@ sub _returned_lexical {
 
 #-----------------------------------------------------------------------------
 
+# Record the definition of a symbol.
+# $symbol is the PPI::Token::Symbol
+# $declaration is the statement that declares it
+# %arg is optional arguments, collected and recorded to support the
+#     various configuration items.
 sub _record_symbol_definition {
     my ( $self, $symbol, $declaration, %arg ) = @_;
 
@@ -663,6 +682,13 @@ sub _record_symbol_definition {
             or $arg{$key} = $FALSE;
     }
 
+    if ( $self->{_trace}{$sym_name} ) {
+        printf STDERR ## no critic (RequireBracedFileHandleWithPrint)
+            "%s 0x%x declared at line %d col %d\n",
+            $sym_name, $ref_addr,
+            $symbol->logical_line_number(), $symbol->column_number();
+    }
+
     push @{ $self->{$PACKAGE}{declared}{ $sym_name } ||= [] }, \%arg;
 
     $self->{$PACKAGE}{need_sort} = $TRUE;
@@ -673,15 +699,43 @@ sub _record_symbol_definition {
 #-----------------------------------------------------------------------------
 
 sub _record_symbol_use {
-    my ( $self, $document, $symbol, $scope ) = @_;
+    my ( $self, $document, $symbol, @scope_of_record ) = @_;
 
     my $declaration;
     my $symbol_name;
     if ( ref $symbol ) {
         $symbol_name = $symbol->symbol();
         if ( ! ( $declaration = $self->{$PACKAGE}{declared}{$symbol_name} ) ) {
+            # If we did not find a declaration for the symbol, it may
+            # have been declared en passant, as part of doing something
+            # else.
+            my $prev = $symbol->sprevious_sibling()
+                or return;
+            $prev->isa( 'PPI::Token::Word' )
+                or return;
+            my $content = $prev->content();
+            exists $GLOBAL_DECLARATION{$content}
+                or return;
+
+            # Yup. It's a declaration. Record it.
+            $declaration = $symbol->statement();
+
+            my $cast = $prev->sprevious_sibling();
+            if ( ! $cast ) {
+                my $parent;
+                $parent = $prev->parent()
+                    and $cast = $parent->sprevious_sibling();
+            }
+
+            $self->_record_symbol_definition(
+                $symbol, $declaration,
+                is_global           => $GLOBAL_DECLARATION{$content},
+                taking_reference    => _element_takes_reference( $cast ),
+            );
+
             return;
         }
+        unshift @scope_of_record, $symbol;
     } else {
         $declaration = $self->{$PACKAGE}{declared}{$symbol}
             or return;
@@ -705,12 +759,22 @@ sub _record_symbol_use {
         }
     }
 
-    foreach my $decl_scope ( @{ $declaration } ) {
-        _element_is_in_lexical_scope_after_statement_containing(
-            $scope, $decl_scope->{declaration} )
-            or next;
-        $decl_scope->{used}++;
-        return;
+    foreach my $scope ( @scope_of_record ) {
+        foreach my $decl_scope ( @{ $declaration } ) {
+            _element_is_in_lexical_scope_after_statement_containing(
+                $scope, $decl_scope->{declaration} )
+                or next;
+            $decl_scope->{used}++;
+            if ( $self->{_trace}{$symbol_name} ) {
+                printf STDERR ## no critic (RequireBracedFileHandleWithPrint)
+                    "%s at line %d col %d refers to 0x%x\n",
+                    $symbol_name,
+                    $scope_of_record[0]->logical_line_number(),
+                    $scope_of_record[0]->column_number(),
+                    refaddr( $decl_scope->{element} );
+            }
+            return;
+        }
     }
 
     return;
@@ -719,26 +783,27 @@ sub _record_symbol_use {
 
 #-----------------------------------------------------------------------------
 
-sub _get_double_quotish_string_uses {
-    my ( $self, $document, $scope_of_record ) = @_;
+sub _element_takes_reference {
+    my ( $elem ) = @_;
+    return $elem && $elem->isa( 'PPI::Token::Cast' ) &&
+        $BSLASH eq $elem->content();
+}
 
-    foreach my $class ( qw{
-        PPI::Token::Quote::Double
-        PPI::Token::Quote::Interpolate
-        PPI::Token::QuoteLike::Backtick
-        PPI::Token::QuoteLike::Command
-        PPI::Token::QuoteLike::Readline
-        PPI::Token::HereDoc
-        } ) {
+#-----------------------------------------------------------------------------
+
+sub _get_double_quotish_string_uses {
+    my ( $self, $document, @scope_of_record ) = @_;
+
+    foreach my $class ( @DOUBLE_QUOTISH ) {
         foreach my $double_quotish (
             @{ $document->find( $class ) || [] }
         ) {
-            my $str = PPIx::QuoteLike->new( $double_quotish )
+            my $str = $self->_get_ppix_quotelike( $double_quotish )
                 or next;
 
             foreach my $var ( $str->variables() ) {
                 $self->_record_symbol_use( $document, $var,
-                    $scope_of_record || $double_quotish );
+                    $double_quotish, @scope_of_record );
             }
         }
     }
@@ -751,16 +816,13 @@ sub _get_double_quotish_string_uses {
 sub _get_regexp_symbol_uses {
     my ( $self, $document ) = @_;
 
-    foreach my $class ( qw{
-        PPI::Token::Regexp::Match
-        PPI::Token::Regexp::Substitute
-        PPI::Token::QuoteLike::Regexp
-        } ) {
+    foreach my $class ( @REGEXP_ISH ) {
 
         foreach my $regex ( @{ $document->find( $class ) || [] } ) {
 
             my $ppix = $document->ppix_regexp_from_element( $regex ) or next;
             $ppix->failures() and next;
+            $ppix->location();  # To force indexing if not already done
 
             foreach my $code ( @{
                 $ppix->find( 'PPIx::Regexp::Token::Code' ) || [] } ) {
@@ -770,8 +832,6 @@ sub _get_regexp_symbol_uses {
                     '-filename-override'    => $document->filename(),
                 );
 
-                # FIXME I do not believe that this properly handles the
-                # case where the code actually declares symbols.
                 $self->_get_symbol_uses( $subdoc, $regex );
 
                 # Yes, someone did s/.../"..."/e.
