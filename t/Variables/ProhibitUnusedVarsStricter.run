@@ -225,6 +225,8 @@ my %fruit = (
 my $teddy = 'Theodore';
 my $one = 'I'
 my $five = 'V';
+my $v6 = 6;
+my $bear = \$teddy;
 
 "$foo";
 qq{$bar};
@@ -232,6 +234,9 @@ qq{$bar};
 qq{$fruit{apple}};
 "\\${teddy}bear";
 "$one$five";
+"${v6}_...";    # Yes, this occurred.
+s{(foo)}{ my $t = $teddy; my $r = $1; $t =~ s/\\1/$r/; }smxe;   # Yes, this is real
+"$${bear}"; # Parsed as Magic '$$', Subscript '{bear}'
 
 #-----------------------------------------------------------------------------
 
