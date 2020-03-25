@@ -613,6 +613,32 @@ say "$foo";
 
 #-----------------------------------------------------------------------------
 
+## name Unused variables declared in stringy things
+## failures 2
+## cut
+
+my $bar = 'bar';
+s/foo/ my $bar = 'baz' /smxe;
+say $bar;
+my $answer = 42;
+say "@{[ my $answer = 43; ]}";
+say $answer;
+
+#-----------------------------------------------------------------------------
+
+## name Variables declared and used in stringy things
+## failures 0
+## cut
+
+my $bar = 'bar';
+s/foo/ my $bar = 'baz'; $bar /smxe;
+say $bar;
+my $answer = 42;
+say "@{[ my $answer = 43; $answer ]}";
+say $answer;
+
+#-----------------------------------------------------------------------------
+
 # Local Variables:
 #   mode: cperl
 #   cperl-indent-level: 4

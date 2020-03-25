@@ -4,11 +4,19 @@ use 5.006001;
 use strict;
 use warnings;
 
+use English qw{ -no_match_vars };
+
 use PPIx::QuoteLike;
+use PPIx::QuoteLike::Constant qw{
+    LOCATION_LINE
+    LOCATION_LOGICAL_LINE
+    LOCATION_CHARACTER
+};
 use PPIx::Regexp;
 use Readonly;
 use Scalar::Util qw{ refaddr };
 
+use Perl::Critic::Exception::Fatal::PolicyDefinition;
 use Perl::Critic::Utils qw< :booleans :characters hashify :severities >;
 
 use base 'Perl::Critic::Policy';
@@ -165,6 +173,18 @@ sub violates {
                                 # document.
     };
 
+    # Ensure entire document is indexed. We don't call index_locations()
+    # because that is unconditional. We wrap the whole thing in an eval
+    # because last_token() can fail under undiagnosed circumstances.
+    {
+        local $EVAL_ERROR = undef;
+        eval {  ## no critic (RequireCheckingReturnValueOfEval)
+            if ( my $token = $document->last_token() ) {
+                $token->location();
+            }
+        }
+    }
+
     $self->_get_symbol_declarations( $document );
 
     $self->_get_symbol_uses( $document );
@@ -248,8 +268,8 @@ sub _get_ppix_regexp {
 
 #-----------------------------------------------------------------------------
 
-# Get the Perl::Critic::Document that represents a PPIx::* class that
-# supports one. The arguments are:
+# Get the PPI::Document that represents a PPIx::* class that supports
+# one. The arguments are:
 #  $ppix_elem - the PPIx::* element providing the document. This MUST
 #    support the ->ppi() method.
 #  $elem - the original PPI::Element from which this element was
@@ -280,42 +300,55 @@ sub _get_parent_element {
 
 #-----------------------------------------------------------------------------
 
+# Get the lowest parent of the inner element that is in the same
+# document as the outer element.
+sub _get_lowest_in_same_doc {
+    my ( $self, $inner_elem, $outer_elem ) = @_;
+    my $outer_top = $outer_elem->top()
+        or return;
+    while ( 1 ) {
+        my $inner_top = $inner_elem->top()
+            or last;
+        $inner_top == $outer_top
+            and return $inner_elem;
+        $inner_elem = $self->_get_parent_element( $inner_top )
+            or last;
+    }
+    return;
+}
+
+#-----------------------------------------------------------------------------
+
 sub _get_ppi_statement_variable {
-    my ( $document ) = @_;
+    my ( $self, $document ) = @_;
 
     my @rslt = @{ $document->find( 'PPI::Statement::Variable' ) || [] };
-
-=begin comment
 
     foreach my $class ( @DOUBLE_QUOTISH ) {
         foreach my $elem ( @{ $document->find( $class ) || [] } ) {
             my $str = $self->_get_ppix_quotelike( $elem )
                 or next;
-            foreach my $code ( @{ $pre->find(
+            foreach my $code ( @{ $str->find(
                 'PPIx::QuoteLike::Token::Interpolation' ) || [] } ) {
-                my $ppi = $code->ppi()
+                my $ppi = $self->_get_derived_ppi_document( $code, $elem )
                     or next;
-                push @rslt, _get_ppi_statement_variable( $ppi );
+                push @rslt, $self->_get_ppi_statement_variable( $ppi );
             }
         }
     }
 
     foreach my $class ( @REGEXP_ISH ) {
         foreach my $elem ( @{ $document->find( $class ) || [] } ) {
-            my $pre = $document->ppix_regexp_from_element( $elem )
+            my $pre = $self->_get_ppix_regexp( $elem )
                 or next;
             foreach my $code ( @{ $pre->find(
                 'PPIx::Regexp::Token::Code' ) || [] } ) {
-                my $ppi = $code->ppi()
+                my $ppi = $self->_get_derived_ppi_document( $code, $elem )
                     or next;
-                push @rslt, _get_ppi_statement_variable( $ppi );
+                push @rslt, $self->_get_ppi_statement_variable( $ppi );
             }
         }
     }
-
-=end comment
-
-=cut
 
     return @rslt;
 }
@@ -326,7 +359,7 @@ sub _get_ppi_statement_variable {
 sub _get_variable_declarations {    ## no critic (ProhibitExcessComplexity)
     my ( $self, $document ) = @_;
 
-    foreach my $declaration ( _get_ppi_statement_variable( $document ) ) {
+    foreach my $declaration ( $self->_get_ppi_statement_variable( $document ) ) {
 
         # This _should_ be the initial 'my', 'our' 'state'
         my $elem = $declaration->schild( 0 )
@@ -395,8 +428,10 @@ sub _get_variable_declarations {    ## no critic (ProhibitExcessComplexity)
             foreach my $symbol ( @symbol_list ) {
 
                 if ( $assign ) {
-                    $symbol->line_number() < $assign->line_number()
-                        or $symbol->line_number() == $assign->line_number()
+                    $symbol->logical_line_number() <
+                            $assign->logical_line_number()
+                        or $symbol->logical_line_number() ==
+                            $assign->logical_line_number()
                         and $symbol->column_number() < $assign->column_number()
                         or next;
                 }
@@ -774,7 +809,7 @@ sub _record_symbol_definition {
 #-----------------------------------------------------------------------------
 
 sub _record_symbol_use {
-    my ( $self, $document, $symbol, $symbol_name ) = @_;
+    my ( $self, undef, $symbol, $symbol_name ) = @_;    # $document not used
 
     my $declaration;
 
@@ -822,7 +857,12 @@ sub _record_symbol_use {
         # think the dereferenes negate this.
         foreach my $decls ( values %{ $self->{$PACKAGE}{declared} } ) {
             @{ $decls } = map { $_->[0] }
-                sort { $b->[1][0] <=> $a->[1][0] || $b->[1][1] <=> $a->[1][1] } ## no critic (ProhibitReverseSortBlock)
+                sort { ## no critic (ProhibitReverseSortBlock)
+                    $b->[1][LOCATION_LOGICAL_LINE] <=>
+                        $a->[1][LOCATION_LOGICAL_LINE] ||
+                    $b->[1][LOCATION_CHARACTER] <=>
+                        $a->[1][LOCATION_CHARACTER]
+                }
                 map { [ $_, $_->{element}->location() ] }
                 @{ $decls };
         }
@@ -834,14 +874,27 @@ sub _record_symbol_use {
             or next;
         $decl_scope->{used}++;
         if ( $self->{_trace}{$symbol_name} ) {
+            my $elem = $decl_scope->{element};
             printf { *STDERR }
-                "%s at line %d col %d refers to 0x%x\n",
+                "%s at line %d col %d refers to 0x%x at line %d col %d\n",
                 $symbol_name,
                 $symbol->logical_line_number(),
                 $symbol->column_number(),
-                refaddr( $decl_scope->{element} );
+                refaddr( $elem ),
+                $elem->logical_line_number(),
+                $elem->column_number(),
+                ;
         }
         return;
+    }
+
+    if ( $self->{_trace}{$symbol_name} ) {
+        printf { *STDERR }
+            "Failed to resolve %s at line %d col %d\n",
+            $symbol_name,
+            $symbol->logical_line_number(),
+            $symbol->column_number(),
+            ;
     }
 
     return;
@@ -850,20 +903,14 @@ sub _record_symbol_use {
 
 sub _derived_element_is_in_lexical_scope_after_statement_containing {
     my ( $self, $inner_elem, $outer_elem ) = @_;
-    _element_is_in_lexical_scope_after_statement_containing(
-        $inner_elem, $outer_elem )
-        and return $TRUE;
-    my $parent = $inner_elem;
-    while (
-        $parent = $parent->top()
-            and $parent = $self->{$PACKAGE}{parent_element}{ refaddr(
-        $parent ) }
-    ) {
-        _element_is_in_lexical_scope_after_statement_containing(
-            $parent, $outer_elem )
-            and return $TRUE;
-    }
-    return $FALSE;
+
+    my $effective_inner = $self->_get_lowest_in_same_doc( $inner_elem,
+        $outer_elem )
+        or return $FALSE;
+
+    return _element_is_in_lexical_scope_after_statement_containing(
+        $effective_inner, $outer_elem );
+
 }
 
 #-----------------------------------------------------------------------------
@@ -888,14 +935,16 @@ sub _get_double_quotish_string_uses {
                 or next;
 
             foreach my $interp ( @{
-                $str->find( 'PPIx::QuoteLike::Token::Interpolation' ) ||
-                [] } ) {
+                $str->find( 'PPIx::QuoteLike::Token::Interpolation' ) || [] } ) {
 
-                my $subdoc = $self->_get_derived_ppi_document( $interp,
-                    $double_quotish );
+                my $subdoc = $self->_get_derived_ppi_document(
+                    $interp, $double_quotish )
+                    or next;
 
                 $self->_get_symbol_uses( $subdoc, $double_quotish );
+
             }
+
         }
     }
 
@@ -913,7 +962,6 @@ sub _get_regexp_symbol_uses {
 
             my $ppix = $self->_get_ppix_regexp( $regex )
                 or next;
-            $ppix->failures() and next;
 
             foreach my $code ( @{
                 $ppix->find( 'PPIx::Regexp::Token::Code' ) || [] } ) {
@@ -966,7 +1014,7 @@ sub _get_violations {
             sprintf( '%s is declared but not used', $_->symbol() ),
             $EXPL,
             $_
-        ) } sort { $a->line_number() <=> $b->line_number() ||
+        ) } sort { $a->logical_line_number() <=> $b->logical_line_number() ||
             $a->column_number() <=> $b->column_number() }
         @in_violation );
 }
@@ -981,7 +1029,7 @@ sub _get_violations {
 # (the copy I am trying to get modified) and Perl::ToPerl6::Document (a
 # cut-and-paste of an early version.)
 #
-# THIS CODE IS UNSUPPORTED. That is, the author reserves the right to
+# THIS CODE IS PRIVATE TO THIS MODULE. The author reserves the right to
 # change it or remove it without any notice whatsoever. YOU HAVE BEEN
 # WARNED.
 #
@@ -992,6 +1040,10 @@ sub _get_violations {
 # sub element_is_in_lexical_scope_after_statement_containing {...}
 sub _element_is_in_lexical_scope_after_statement_containing {
     my ( $inner_elem, $outer_elem ) = @_;
+
+    $inner_elem->top() == $outer_elem->top()
+        or Perl::Critic::Exception::Fatal::PolicyDefinition->throw(
+            message => 'Elements must be in same document' );
 
     # If the outer element defines a scope, we're true if and only if
     # the outer element contains the inner element, and the inner
@@ -1022,10 +1074,10 @@ sub _element_is_in_lexical_scope_after_statement_containing {
     my $inner_loc = $inner_elem->location()
         or return;
 
-    $stmt_loc->[0] > $inner_loc->[0]
+    $stmt_loc->[LOCATION_LINE] > $inner_loc->[LOCATION_LINE]
         and return;
-    $stmt_loc->[0] == $inner_loc->[0]
-        and $stmt_loc->[1] >= $inner_loc->[1]
+    $stmt_loc->[LOCATION_LINE] == $inner_loc->[LOCATION_LINE]
+        and $stmt_loc->[LOCATION_CHARACTER] >= $inner_loc->[LOCATION_CHARACTER]
         and return;
 
     # Since we know the inner element is after the outer element, find
@@ -1112,10 +1164,10 @@ sub _location_is_in_right_hand_side_of_assignment {
             and q{=} eq $kid->content()
             or next;
         my $l = $kid->location();
-        $l->[0] > $inner_loc->[0]
+        $l->[LOCATION_LINE] > $inner_loc->[LOCATION_LINE]
             and return;
-        $l->[0] == $inner_loc->[0]
-            and $l->[1] >= $inner_loc->[1]
+        $l->[LOCATION_LINE] == $inner_loc->[LOCATION_LINE]
+            and $l->[LOCATION_CHARACTER] >= $inner_loc->[LOCATION_CHARACTER]
             and return;
         return $inner_elem->descendant_of( $elem );
     } continue {
