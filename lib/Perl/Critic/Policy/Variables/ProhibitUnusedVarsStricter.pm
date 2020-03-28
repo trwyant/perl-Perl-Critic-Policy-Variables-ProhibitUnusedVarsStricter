@@ -12,7 +12,7 @@ use PPIx::QuoteLike::Constant qw{
     LOCATION_LOGICAL_LINE
     LOCATION_CHARACTER
 };
-use PPIx::Regexp;
+use PPIx::Regexp 0.071;
 use Readonly;
 use Scalar::Util qw{ refaddr };
 
