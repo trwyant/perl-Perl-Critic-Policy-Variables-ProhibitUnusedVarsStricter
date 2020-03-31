@@ -67,7 +67,7 @@ sub required_module_versions {
         'Perl::Critic::Policy'      => 1.119,
         'Perl::Critic::Utils'       => 1.119,
         'PPI::Token::Symbol'        => 0,
-        'PPIx::QuoteLike'           => 0.005,
+        'PPIx::QuoteLike'           => 0.011,   # For full scope inside ""
         'PPIx::Regexp'              => 0.071,   # For full scope inside //
         'Readonly'                  => 0,
         'Scalar::Util'              => 0,

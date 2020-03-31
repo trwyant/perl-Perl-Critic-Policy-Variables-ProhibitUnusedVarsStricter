@@ -6,8 +6,8 @@ use warnings;
 
 use English qw{ -no_match_vars };
 
-use PPIx::QuoteLike;
-use PPIx::QuoteLike::Constant qw{
+use PPIx::QuoteLike 0.011;
+use PPIx::QuoteLike::Constant 0.011 qw{
     LOCATION_LINE
     LOCATION_LOGICAL_LINE
     LOCATION_CHARACTER
