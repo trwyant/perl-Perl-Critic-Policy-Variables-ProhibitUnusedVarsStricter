@@ -1,4 +1,4 @@
-0.105_01	2020-04-01	T. R. Wyant
+0.106		2020-04-08	T. R. Wyant
     Dig out variables declared inside strings e.g. "foo@{[ my $bar ]}"
 
     Find variables declared in passing.  That is, things like
