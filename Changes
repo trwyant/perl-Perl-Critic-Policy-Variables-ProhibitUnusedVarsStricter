@@ -1,3 +1,6 @@
+0.106_01	2020-04-28	T. R. Wyant
+    Make documented build dependencies nearer to reality.
+
 0.106		2020-04-08	T. R. Wyant
     Dig out variables declared inside strings e.g. "foo@{[ my $bar ]}"
 
