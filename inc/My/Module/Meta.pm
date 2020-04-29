@@ -79,6 +79,8 @@ sub build_required_module_versions {
     return (
         'lib'       => 0,
         'Carp'      => 0,
+        'Test::More' => 0,
+        'Test::Perl::Critic::Policy'    => 0,
     );
 }
 
