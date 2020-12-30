@@ -1402,6 +1402,12 @@ or, if you prefer,
     my ($mday,$mon,$year) = ( localtime() )[ 3, 4, 5 ];
 
 
+=head1 SUPPORT
+
+Support is by the author. Please file bug reports at
+L<https://github.com/trwyant/perl-Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter/issues>,
+or in electronic mail to the author.
+
 =head1 AUTHOR
 
 Thomas R. Wyant, III F<wyant at cpan dot org>
