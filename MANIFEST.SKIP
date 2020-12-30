@@ -72,3 +72,6 @@
 
 # Avoid archives of this distribution
 \bPerl-Critic-Policy-Variables-ProhibitUnusedVarsStricter-[\d\.\_]+
+
+# Avoid Travis CI configuration
+^\.travis\.yml$
