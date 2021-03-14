@@ -43,7 +43,8 @@ sub meta_merge {
 	},
 	resources	=> {
 	    bugtracker	=> {
-                web => 'https://github.com/trwyant/perl-Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter/issues',
+		web	=> 'https://rt.cpan.org/Public/Dist/Display.html?Name=Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter',
+		# web	=> 'https://github.com/trwyant/perl-Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter/issues',
 ##                mailto  => 'wyant@cpan.org',
             },
 	    license	=> 'http://dev.perl.org/licenses/',
@@ -93,7 +94,6 @@ sub recommended_module_versions {
 sub requires_perl {
     return '5.006001';
 }
-
 
 1;
 
@@ -150,8 +150,9 @@ This subroutine returns the version of Perl required by the module.
 =head1 SUPPORT
 
 Support is by the author. Please file bug reports at
-L<https://github.com/trwyant/perl-Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter/issues>,
-or in electronic mail to the author.
+L<https://rt.cpan.org/Public/Dist/Display.html?Name=Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter>,
+L<https://github.com/trwyant/perl-Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter/issues>, or in
+electronic mail to the author.
 
 =head1 AUTHOR
 

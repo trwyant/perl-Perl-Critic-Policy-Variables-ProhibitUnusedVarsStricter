@@ -38,7 +38,6 @@ sub ACTION_genclean {
     return;
 }
 
-
 1;
 
 __END__
@@ -87,8 +86,9 @@ L<Module::Build|Module::Build>.
 =head1 SUPPORT
 
 Support is by the author. Please file bug reports at
-L<https://github.com/trwyant/perl-Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter/issues>,
-or in electronic mail to the author.
+L<https://rt.cpan.org/Public/Dist/Display.html?Name=Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter>,
+L<https://github.com/trwyant/perl-Perl-Critic-Policy-Variables-ProhibitUnusedVarsStricter/issues>, or in
+electronic mail to the author.
 
 =head1 AUTHOR
 
