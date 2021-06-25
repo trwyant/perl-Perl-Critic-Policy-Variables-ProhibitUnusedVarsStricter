@@ -1,3 +1,10 @@
+0.110_02	2021-06-25	T. R. Wyant
+    Correct generation of 'provides' metadata. Thanks to Favio Poletti
+    for blogging
+    https://github.polettix.it/ETOOBUSY/2021/06/15/the-real-pause-workaround/,
+    and ultimately to Joel Berger for the pointer to
+    https://metacpan.org/pod/CPAN::Meta::Spec#no_index
+
 0.110_01	2021-06-19	T. R. Wyant
     Optionally check variable in catch(). This is controlled by the
     check_catch configuration item, which is off by default.
