@@ -7,7 +7,7 @@ use warnings;
 
 use Carp;
 
-our $VERSION = '0.110_03';
+our $VERSION = '0.111';
 
 sub new {
     my ( $class ) = @_;
