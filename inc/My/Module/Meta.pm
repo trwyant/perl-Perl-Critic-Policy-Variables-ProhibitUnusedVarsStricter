@@ -152,6 +152,7 @@ sub requires {
 	'Perl::Critic::Exception::Fatal::PolicyDefinition' => 1.119,
         'Perl::Critic::Policy'      => 1.119,
         'Perl::Critic::Utils'       => 1.119,
+	'PPI::Document'			=> 0,
 	# 'PPI::Token::Symbol'        => 0,
         'PPIx::QuoteLike'           => 0.011,   # For full scope inside ""
 	'PPIx::QuoteLike::Constant' => 0.011,
