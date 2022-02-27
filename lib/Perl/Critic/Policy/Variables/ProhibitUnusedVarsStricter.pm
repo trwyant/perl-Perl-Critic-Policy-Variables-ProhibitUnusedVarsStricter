@@ -24,7 +24,7 @@ use Perl::Critic::Utils qw< :booleans :characters hashify :severities >;
 
 use base 'Perl::Critic::Policy';
 
-our $VERSION = '0.112_01';
+our $VERSION = '0.113';
 
 #-----------------------------------------------------------------------------
 
@@ -1003,11 +1003,11 @@ sub _get_regexp_symbol_uses {
 
         foreach my $regex ( @{ $document->find( $class ) || [] } ) {
 
-            my $ppix = $self->_get_ppix_regexp( $regex )
+            my $pre = $self->_get_ppix_regexp( $regex )
                 or next;
 
             foreach my $code ( @{
-                $ppix->find( 'PPIx::Regexp::Token::Code' ) || [] } ) {
+                $pre->find( 'PPIx::Regexp::Token::Code' ) || [] } ) {
 
                 my $subdoc = $self->_get_derived_ppi_document( $code,
                     $regex );
