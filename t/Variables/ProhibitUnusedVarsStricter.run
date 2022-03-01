@@ -521,16 +521,24 @@ return my $x = 'foo';
 
 return ( my $y = 42 );
 
+return state $z = 86;
+
+return ( state $halloween = 31 );
+
 #-----------------------------------------------------------------------------
 
 ## name prohibit temporary lvalue
 ## parms { prohibit_returned_lexicals => '1' }
-## failures 2
+## failures 4
 ## cut
 
 return my $x = 'foo';
 
 return ( my $y = 42 );
+
+return state $z = 86;
+
+return ( state $halloween = 31 );
 
 #-----------------------------------------------------------------------------
 

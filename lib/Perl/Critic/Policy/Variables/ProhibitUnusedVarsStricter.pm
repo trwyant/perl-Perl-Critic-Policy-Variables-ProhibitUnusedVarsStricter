@@ -228,11 +228,12 @@ sub _dump {
                 $fn = 'undef';
             }
             printf { *STDERR }
-                "    %s line %d column %d used %d\n",
+                "    %s line %d column %d: used %d; returned %d\n",
                 $fn,
                 $sym->logical_line_number(),
                 $sym->column_number(),
-                $decl->{used};
+                $decl->{used},
+                $decl->{returned_lexical} || 0,
         }
     }
     return;
@@ -1490,14 +1491,17 @@ F<.perlcriticrc> file:
 
 =head2 prohibit_returned_lexicals
 
-By default, this policy allows otherwise-unused variables if they are
-being returned from a subroutine, under the presumption that they are
-going to be used as lvalues by the caller. If you wish to declare a
-violation in this case, you can add a block like this to your
-F<.perlcriticrc> file:
+By default, this policy allows otherwise-unused lexical variables
+(either C<'my'> or C<'state'>) if they are being returned from a
+subroutine, under the presumption that they are going to be used as
+lvalues by the caller. If you wish to declare a violation in this case,
+you can add a block like this to your F<.perlcriticrc> file:
 
     [Variables::ProhibitUnusedVarsStricter]
     prohibit_returned_lexicals = 1
+
+B<Note> that only explicit C<'return'> statements are covered by this
+setting. No attempt is made to detect and allow implicit returns.
 
 =head2 allow_if_computed_by
 
