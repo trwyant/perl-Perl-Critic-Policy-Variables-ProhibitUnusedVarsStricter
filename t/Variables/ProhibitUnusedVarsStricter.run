@@ -436,6 +436,10 @@ print { $fh } "Hello, sailor!\n";
     my $foo = scope_watch();
 }
 
+{
+    my $bar = $foo->scope_watch();
+}
+
 #-----------------------------------------------------------------------------
 
 ## name Double dollar form of dereference
