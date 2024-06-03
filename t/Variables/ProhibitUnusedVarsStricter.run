@@ -428,7 +428,7 @@ print { $fh } "Hello, sailor!\n";
 #-----------------------------------------------------------------------------
 
 ## name Can add to allowed computation list
-## parms { allow_if_computed_by => 'scope_watch' }
+## parms { allow_if_computed_by => 'scope_watch Static->method' }
 ## failures 0
 ## cut
 
@@ -438,6 +438,10 @@ print { $fh } "Hello, sailor!\n";
 
 {
     my $bar = $foo->scope_watch();
+}
+
+{
+    my $baz = Static->method();
 }
 
 #-----------------------------------------------------------------------------

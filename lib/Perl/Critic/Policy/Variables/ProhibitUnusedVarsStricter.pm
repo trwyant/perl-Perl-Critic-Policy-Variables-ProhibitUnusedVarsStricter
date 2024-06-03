@@ -27,6 +27,8 @@ use base 'Perl::Critic::Policy';
 
 our $VERSION = '0.114';
 
+Readonly::Scalar my $DEREF => q/->/;
+
 #-----------------------------------------------------------------------------
 
 Readonly::Scalar my $EXPL =>
@@ -608,6 +610,24 @@ sub _is_allowed_computation {
 
         # We are presumed to be a subroutine call.
         my $content = $next_sib->content();
+        $self->{_allow_if_computed_by}{$content}
+            and return $content;
+
+        # We might be a static method call. This looks like
+        # bareword_1->bareword_2.
+        $next_sib = $next_sib->snext_sibling()
+            or return;
+        $next_sib->isa( 'PPI::Token::Operator' )
+            and $next_sib->content() eq $DEREF
+            or return;
+        $content .= $next_sib->content();
+
+        $next_sib = $next_sib->snext_sibling()
+            or return;
+        $next_sib->isa( 'PPI::Token::Word' )
+            or return;
+        $content .= $next_sib->content();
+
         $self->{_allow_if_computed_by}{$content}
             and return $content;
 
@@ -1516,8 +1536,22 @@ these, you can add a block like this to your F<.perlcriticrc> file:
     allow_if_computed_by = stat unpack Scope::Guard
 
 This property takes as its value a whitespace-delimited list of class or
-subroutine names. Nothing complex is done to implement this -- the
-policy simply looks at the first word after the equals sign, if any.
+subroutine names.
+
+As of version 0.115, static method calls are recognized; that is, you
+can specify C<< Class->method >> to C<allow_if_computed_by>.
+
+Nothing complex is done to implement this. the policy simply looks for
+the first equals sign, and allows the otherwise-unused variable if the
+equals sign is followed by:
+
+=over
+
+=item A symbol followed by a dereference and a bareword (e.g. C<< $foo->bar >>;
+
+=item A bareword, possibly followed by a dereference and a bareword (e.g. C<foo> or C<< foo->bar >>).
+
+=back
 
 =head2 allow_state_in_expression
 
