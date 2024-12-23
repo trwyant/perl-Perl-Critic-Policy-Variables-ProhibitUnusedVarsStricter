@@ -15,6 +15,7 @@ META.yml
 README
 t/00_modules.t
 t/20_policies.t
+t/20_policies_sig.t
 t/Variables/ProhibitUnusedVarsStricter.run
 xt/author/40_criticize-code.t
 xt/author/40_perlcriticrc-code
@@ -37,3 +38,4 @@ xt/author/pod_links.t
 xt/author/ppi_catch_var.t
 xt/author/prereq.t
 xt/author/require_wrapper.t
+xt/Sig/Variables/ProhibitUnusedVarsStricter.run

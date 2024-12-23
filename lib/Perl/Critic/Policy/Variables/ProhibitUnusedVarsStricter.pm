@@ -253,6 +253,8 @@ sub _get_symbol_declarations {
     $self->{_check_catch}
         and $self->_get_catch_declarations( $document );
 
+    $self->_get_signature_declarations( $document );
+
     return;
 
 }
@@ -393,6 +395,27 @@ sub _get_catch_declarations {
             or next;
         foreach my $sym ( @{ $list->find( 'PPI::Token::Symbol' ) || [] } ) {
             # Should be only one, but ...
+            $self->_record_symbol_definition(
+                $sym, $sym->statement() );
+        }
+    }
+    return;
+}
+
+#-----------------------------------------------------------------------------
+
+# Signatures are a special case not only because the 'my' is implied but
+# because unused variable placeholders are specified by a lone sigil,
+# which parses as a PPI::Token::Symbol, at least most of the time. NOTE
+# that you need at least PPI 1.290 to actually get a PPI::Structure::Signature.
+sub _get_signature_declarations {
+    my ( $self, $document ) = @_;
+    foreach my $sig ( @{ $document->find( 'PPI::Structure::Signature' )
+        || [] } ) {
+        foreach my $sym ( @{ $sig->find( 'PPI::Token::Symbol' ) || [] } ) {
+            my $content = $sym->content();
+            length( $content ) > 1
+                or next;
             $self->_record_symbol_definition(
                 $sym, $sym->statement() );
         }
@@ -1659,7 +1682,7 @@ look like
     #     0     1     2     3     4    5
     my (undef,undef,undef,$mday,$mon,$year) = localtime();
 
-=head2 Slice the Right-Hand Side
+=head3 Slice the Right-Hand Side
 
 The unwanted values can also be eliminated by slicing the right-hand
 side of the assignment. This looks like
@@ -1671,6 +1694,21 @@ or, if you prefer,
 
     #     3     4    5
     my ($mday,$mon,$year) = ( localtime() )[ 3, 4, 5 ];
+
+=head2 Subroutine Signatures
+
+Subroutine signatures are available via C<use feature 'signatures';>
+beginning with Perl 5.20, or via C<use v5.36;> beginning with that
+version.
+
+Unused variables in signatures are specified by just giving the sigil
+for the argument. For example,
+
+    sub hi ( $, $who='world', @ ) {
+        say "Hello, $who";
+    }
+
+takes at least two arguments, but only makes use of the second one.
 
 =head1 SUPPORT
 
