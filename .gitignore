@@ -2,6 +2,7 @@
 /blib
 /Build
 /Debian_CPANTS.txt
+/cover_db/
 /foo/
 /Makefile
 /meta/
