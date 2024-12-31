@@ -25,7 +25,7 @@ use Perl::Critic::Utils qw< :booleans :characters hashify :severities >;
 
 use base 'Perl::Critic::Policy';
 
-our $VERSION = '0.114';
+our $VERSION = '0.114_01';
 
 Readonly::Scalar my $DEREF => q/->/;
 
