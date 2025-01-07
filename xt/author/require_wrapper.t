@@ -5,7 +5,7 @@ use 5.006001;
 use strict;
 use warnings;
 
-use PPI::Document;
+use PPI::Document 1.281;
 use Perl::Critic::Utils qw{ is_function_call is_method_call };
 use Test::More 0.88;	# Because of done_testing();
 

@@ -6,7 +6,7 @@ use warnings;
 
 use English qw{ -no_match_vars };
 
-use PPI::Document;
+use PPI::Document 1.281;
 use PPIx::QuoteLike 0.011;
 use PPIx::QuoteLike::Constant 0.011 qw{
     LOCATION_LINE

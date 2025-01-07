@@ -5,7 +5,7 @@ use warnings;
 use Carp qw< confess >;
 
 use File::Find;
-use PPI::Document;
+use PPI::Document 1.281;
 
 use Test::More;
 
