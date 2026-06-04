@@ -1621,7 +1621,7 @@ Thomas R. Wyant, III F<harryfmudd at comcast dot net>
 
 =head1 COPYRIGHT
 
-Copyright (C) 2012-2022, 2024-2025 Thomas R. Wyant, III
+Copyright (C) 2012-2022, 2024-2026 Thomas R. Wyant, III
 
 =head1 LICENSE
 
