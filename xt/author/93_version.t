@@ -17,7 +17,7 @@ our $VERSION = '0.116';
 
 plan 'no_plan';
 
-my $last_version = undef;
+my $last_version;
 find({wanted => \&check_version, no_chdir => 1}, 'blib');
 if (! defined $last_version) {
     fail('Failed to find any files with $VERSION'); ## no critic (RequireInterpolationOfMetachars)
