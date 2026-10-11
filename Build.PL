@@ -23,6 +23,7 @@ my %args = (
     license	=> $meta->license(),
     module_name	=> $meta->module_name(),
     recommends	=> { $meta->recommended_module_versions() },
+    release_status	=> $meta->release_status(),
     requires	=> $meta->requires(
 	perl	=> $meta->requires_perl(),
     ),
